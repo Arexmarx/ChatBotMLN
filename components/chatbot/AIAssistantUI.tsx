@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Calendar, LayoutGrid, MoreHorizontal } from "lucide-react"
 import Sidebar from "./Sidebar"
 import Header from "./Header"
@@ -8,8 +9,11 @@ import ChatPane from "./ChatPane"
 import GhostIconButton from "./GhostIconButton"
 import ThemeToggle from "./ThemeToggle"
 import { INITIAL_CONVERSATIONS, INITIAL_TEMPLATES, INITIAL_FOLDERS } from "./mockData"
+import { fetchSupabaseSession, subscribeToAuthChanges } from "@/app/api/authApi"
+import type { User } from "@supabase/supabase-js"
 
 export default function AIAssistantUI() {
+  const router = useRouter()
   const [theme, setTheme] = useState(() => {
     const saved = typeof window !== "undefined" && localStorage.getItem("theme")
     if (saved) return saved
@@ -75,6 +79,7 @@ export default function AIAssistantUI() {
   const [selectedId, setSelectedId] = useState(null)
   const [templates, setTemplates] = useState(INITIAL_TEMPLATES)
   const [folders, setFolders] = useState(INITIAL_FOLDERS)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
 
   const [query, setQuery] = useState("")
   const searchRef = useRef(null)
@@ -106,6 +111,39 @@ export default function AIAssistantUI() {
       createNewChat()
     }
   }, [])
+
+  useEffect(() => {
+    let mounted = true
+    let unsubscribe: (() => void) | null = null
+
+    const initialiseUser = async () => {
+      try {
+        const { data } = await fetchSupabaseSession()
+        if (!mounted) return
+        setCurrentUser(data.session?.user ?? null)
+        if (!data.session?.user) {
+          router.replace("/")
+        }
+      } catch (error) {
+        console.error("Unable to load Supabase session", error)
+      }
+    }
+
+    initialiseUser()
+
+    unsubscribe = subscribeToAuthChanges((_event, session) => {
+      if (!mounted) return
+      setCurrentUser(session?.user ?? null)
+      if (!session?.user) {
+        router.replace("/")
+      }
+    })
+
+    return () => {
+      mounted = false
+      unsubscribe?.()
+    }
+  }, [router])
 
   const filtered = useMemo(() => {
     if (!query.trim()) return conversations
@@ -267,6 +305,7 @@ export default function AIAssistantUI() {
 
       <div className="flex h-full w-full">
         <Sidebar
+          user={currentUser}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           theme={theme}

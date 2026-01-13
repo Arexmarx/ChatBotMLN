@@ -1,6 +1,9 @@
-import React from "react";
+"use client";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bot, Library, Network, GraduationCap, ArrowRight } from "lucide-react";
+import { fetchSupabaseSession, subscribeToAuthChanges } from "@/app/api/authApi";
 
 const pillars = [
   {
@@ -47,6 +50,65 @@ const timeline = [
 ];
 
 export default function HomePage() {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
+
+    const initAuth = async () => {
+      try {
+        const { data } = await fetchSupabaseSession();
+        if (!mounted) return;
+        setIsAuthenticated(Boolean(data.session?.user));
+      } catch (error) {
+        console.error("Unable to initialise auth state", error);
+      } finally {
+        if (mounted) {
+          setAuthChecked(true);
+        }
+      }
+    };
+
+    initAuth();
+
+    try {
+      unsubscribe = subscribeToAuthChanges((_event, session) => {
+        if (!mounted) return;
+        setIsAuthenticated(Boolean(session?.user));
+      });
+    } catch (error) {
+      console.error("Auth subscription failed", error);
+    }
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!warningMessage) return;
+    const timer = setTimeout(() => setWarningMessage(null), 3500);
+    return () => clearTimeout(timer);
+  }, [warningMessage]);
+
+  const handleStartChat = () => {
+    if (!authChecked) {
+      return;
+    }
+
+    if (isAuthenticated) {
+      router.push("/chat");
+      return;
+    }
+
+    setWarningMessage("Bạn cần đăng nhập để sử dụng AI.");
+  };
+
   return (
     <div className="space-y-16 text-gray-900">
       <section className="overflow-hidden rounded-3xl border border-red-100 bg-gradient-to-br from-red-50 via-white to-amber-50 shadow-lg">
@@ -63,14 +125,16 @@ export default function HomePage() {
               Việt Sử Chatbot đồng hành cùng bạn nghiên cứu các luận điểm cốt lõi của
               chủ nghĩa xã hội khoa học, từ nền tảng lý luận đến thực tiễn cách mạng ở Việt Nam.
             </p>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/chat"
-                className="inline-flex items-center gap-2 rounded-full bg-red-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-600"
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleStartChat}
+                disabled={!authChecked}
+                className="inline-flex items-center gap-2 rounded-full bg-red-500 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-400"
               >
                 Bắt đầu trò chuyện
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </button>
               <Link
                 href="/kien-thuc"
                 className="inline-flex items-center gap-2 rounded-full border border-red-200 px-6 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
@@ -78,6 +142,11 @@ export default function HomePage() {
                 Xem kho tư liệu
               </Link>
             </div>
+            {warningMessage && (
+              <p className="text-xs font-semibold text-red-500">
+                {warningMessage}
+              </p>
+            )}
           </div>
 
           <div className="relative">
@@ -135,7 +204,7 @@ export default function HomePage() {
           Ôn lại những mốc son quan trọng đã định hướng con đường xây dựng xã hội mới của nhân loại và Việt Nam.
         </p>
         <div className="mt-8 grid gap-6 md:grid-cols-4">
-          {timeline.map((milestone) => (
+              {timeline.map((milestone) => (
             <div
               key={milestone.year}
               className="rounded-2xl border border-red-100 bg-red-50/60 p-5"

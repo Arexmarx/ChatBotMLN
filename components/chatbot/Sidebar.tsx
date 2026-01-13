@@ -22,7 +22,8 @@ import CreateTemplateModal from "./CreateTemplateModal"
 import SearchModal from "./SearchModal"
 import SettingsPopover from "./SettingsPopover"
 import { cls } from "./utils"
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import type { User } from "@supabase/supabase-js"
 
 export default function Sidebar({
   open,
@@ -49,6 +50,7 @@ export default function Sidebar({
   onUseTemplate = () => {},
   sidebarCollapsed = false,
   setSidebarCollapsed = () => {},
+  user = null as User | null,
 }) {
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
   const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false)
@@ -128,6 +130,44 @@ export default function Sidebar({
   const handleUseTemplate = (template) => {
     onUseTemplate(template)
   }
+
+  const { avatarUrl, initials, displayName, displaySubtitle } = useMemo(() => {
+    if (!user) {
+      return {
+        avatarUrl: null as string | null,
+        initials: "?",
+        displayName: "Khách",
+        displaySubtitle: "Đăng nhập để sử dụng đầy đủ",
+      }
+    }
+
+    const fullName = typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : undefined
+    const email = user.email ?? undefined
+    const avatarUrl =
+      typeof user.user_metadata?.avatar_url === "string"
+        ? user.user_metadata.avatar_url
+        : typeof user.user_metadata?.picture === "string"
+        ? user.user_metadata.picture
+        : null
+
+    const initialFromName = fullName
+      ? fullName
+          .split(" ")
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part.charAt(0).toUpperCase())
+          .join("")
+      : undefined
+
+    const initial = initialFromName || email?.charAt(0)?.toUpperCase() || "U"
+
+    return {
+      avatarUrl,
+      initials: initial,
+      displayName: fullName || email || "Người dùng",
+      displaySubtitle: email || "Đã xác thực",
+    }
+  }, [user])
 
   if (sidebarCollapsed) {
     return (
@@ -409,12 +449,12 @@ export default function Sidebar({
                 </div>
               </div>
               <div className="mt-2 flex items-center gap-2 rounded-xl bg-zinc-50 p-2 dark:bg-zinc-800/60">
-                <div className="grid h-8 w-8 place-items-center rounded-full bg-zinc-900 text-xs font-bold text-white dark:bg-white dark:text-zinc-900">
-                  JD
+                <div className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-zinc-900 text-xs font-bold text-white dark:bg-white dark:text-zinc-900">
+                  {avatarUrl ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" /> : initials}
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">John Doe</div>
-                  <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">Pro workspace</div>
+                  <div className="truncate text-sm font-medium">{displayName}</div>
+                  <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">{displaySubtitle}</div>
                 </div>
               </div>
             </div>
