@@ -1,8 +1,16 @@
-import React from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import type { ReactNode } from "react"
+import { AnimatePresence, motion } from "framer-motion"
+import { ChevronDown, ChevronRight } from "lucide-react"
 
-export default function SidebarSection({ icon, title, children, collapsed, onToggle }) {
+type SidebarSectionProps = {
+  icon: ReactNode
+  title: string
+  children: ReactNode
+  collapsed: boolean
+  onToggle: () => void
+}
+
+export default function SidebarSection({ icon, title, children, collapsed, onToggle }: SidebarSectionProps) {
   return (
     <section>
       <button
@@ -34,5 +42,5 @@ export default function SidebarSection({ icon, title, children, collapsed, onTog
         )}
       </AnimatePresence>
     </section>
-  );
+  )
 }

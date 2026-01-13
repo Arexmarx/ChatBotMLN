@@ -1,74 +1,86 @@
 "use client"
-import { useState } from "react"
+import { useState, type ReactElement, type ReactNode } from "react"
 import { Paperclip, Bot, Search, Palette, BookOpen, MoreHorizontal, Globe, ChevronRight } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
+import { cls } from "./utils"
 
-export default function ComposerActionsPopover({ children }) {
+type ActionItem = {
+  icon: (props: { className?: string }) => ReactElement
+  label: string
+  action: () => void
+  badge?: string
+}
+
+type ComposerActionsPopoverProps = {
+  children: ReactNode
+}
+
+export default function ComposerActionsPopover({ children }: ComposerActionsPopoverProps) {
   const [open, setOpen] = useState(false)
   const [showMore, setShowMore] = useState(false)
 
-  const mainActions = [
+  const mainActions: ActionItem[] = [
     {
-      icon: Paperclip,
+      icon: (props) => <Paperclip {...props} />,
       label: "Add photos & files",
       action: () => console.log("Add photos & files"),
     },
     {
-      icon: Bot,
+      icon: (props) => <Bot {...props} />,
       label: "Agent mode",
       badge: "NEW",
       action: () => console.log("Agent mode"),
     },
     {
-      icon: Search,
+      icon: (props) => <Search {...props} />,
       label: "Deep research",
       action: () => console.log("Deep research"),
     },
     {
-      icon: Palette,
+      icon: (props) => <Palette {...props} />,
       label: "Create image",
       action: () => console.log("Create image"),
     },
     {
-      icon: BookOpen,
+      icon: (props) => <BookOpen {...props} />,
       label: "Study and learn",
       action: () => console.log("Study and learn"),
     },
   ]
 
-  const moreActions = [
+  const moreActions: ActionItem[] = [
     {
-      icon: Globe,
+      icon: (props) => <Globe {...props} />,
       label: "Web search",
       action: () => console.log("Web search"),
     },
     {
-      icon: Palette,
+      icon: (props) => <Palette {...props} />,
       label: "Canvas",
       action: () => console.log("Canvas"),
     },
     {
-      icon: () => (
-        <div className="h-5 w-5 rounded bg-gradient-to-br from-blue-500 via-green-400 to-yellow-400 flex items-center justify-center">
-          <div className="h-2.5 w-2.5 bg-white rounded-sm" />
+      icon: ({ className }) => (
+        <div className={cls("flex h-5 w-5 items-center justify-center rounded bg-gradient-to-br from-blue-500 via-green-400 to-yellow-400", className)}>
+          <div className="h-2.5 w-2.5 rounded-sm bg-white" />
         </div>
       ),
       label: "Connect Google Drive",
       action: () => console.log("Connect Google Drive"),
     },
     {
-      icon: () => (
-        <div className="h-5 w-5 rounded bg-blue-500 flex items-center justify-center">
-          <div className="h-2.5 w-2.5 bg-white rounded-sm" />
+      icon: ({ className }) => (
+        <div className={cls("flex h-5 w-5 items-center justify-center rounded bg-blue-500", className)}>
+          <div className="h-2.5 w-2.5 rounded-sm bg-white" />
         </div>
       ),
       label: "Connect OneDrive",
       action: () => console.log("Connect OneDrive"),
     },
     {
-      icon: () => (
-        <div className="h-5 w-5 rounded bg-teal-500 flex items-center justify-center">
-          <div className="h-2.5 w-2.5 bg-white rounded-sm" />
+      icon: ({ className }) => (
+        <div className={cls("flex h-5 w-5 items-center justify-center rounded bg-teal-500", className)}>
+          <div className="h-2.5 w-2.5 rounded-sm bg-white" />
         </div>
       ),
       label: "Connect Sharepoint",
@@ -76,7 +88,7 @@ export default function ComposerActionsPopover({ children }) {
     },
   ]
 
-  const handleAction = (action) => {
+  const handleAction = (action: () => void) => {
     action()
     setOpen(false)
     setShowMore(false)
@@ -90,7 +102,7 @@ export default function ComposerActionsPopover({ children }) {
     setShowMore(false)
   }
 
-  const handleOpenChange = (newOpen) => {
+  const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen)
     if (!newOpen) {
       setShowMore(false)
@@ -176,11 +188,7 @@ export default function ComposerActionsPopover({ children }) {
                       onClick={() => handleAction(action.action)}
                       className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                     >
-                      {typeof IconComponent === "function" ? (
-                        <IconComponent />
-                      ) : (
-                        <IconComponent className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
-                      )}
+                      <IconComponent className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
                       <span>{action.label}</span>
                     </button>
                   )

@@ -5,11 +5,21 @@ import { Send, Loader2, Plus, Mic } from "lucide-react"
 import ComposerActionsPopover from "./ComposerActionsPopover"
 import { cls } from "./utils"
 
-const Composer = forwardRef(function Composer({ onSend, busy }, ref) {
-  const [value, setValue] = useState("")
+export type ComposerHandle = {
+  insertTemplate: (content: string) => void
+  focus: () => void
+}
+
+type ComposerProps = {
+  onSend?: (value: string) => void | Promise<void>
+  busy?: boolean
+}
+
+const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer({ onSend, busy = false }, ref) {
+  const [value, setValue] = useState<string>("")
   const [sending, setSending] = useState(false)
   const [lineCount, setLineCount] = useState(1)
-  const inputRef = useRef(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     if (inputRef.current) {
@@ -36,7 +46,7 @@ const Composer = forwardRef(function Composer({ onSend, busy }, ref) {
   useImperativeHandle(
     ref,
     () => ({
-      insertTemplate: (templateContent) => {
+      insertTemplate: (templateContent: string) => {
         setValue((prev) => {
           const newValue = prev ? `${prev}\n\n${templateContent}` : templateContent
           setTimeout(() => {

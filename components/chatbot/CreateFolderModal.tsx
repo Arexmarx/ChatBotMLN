@@ -1,13 +1,19 @@
 "use client"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Lightbulb } from "lucide-react"
-import { useState } from "react"
+import { useState, type FormEvent } from "react"
 
-export default function CreateFolderModal({ isOpen, onClose, onCreateFolder }) {
+type CreateFolderModalProps = {
+  isOpen: boolean
+  onClose: () => void
+  onCreateFolder: (name: string) => void
+}
+
+export default function CreateFolderModal({ isOpen, onClose, onCreateFolder }: CreateFolderModalProps) {
   const [folderName, setFolderName] = useState("")
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     if (folderName.trim()) {
       onCreateFolder(folderName.trim())
       setFolderName("")

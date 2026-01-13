@@ -1,9 +1,39 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, type MouseEvent } from "react"
 import { FolderIcon, ChevronRight, ChevronDown, MoreHorizontal } from "lucide-react"
 import ConversationRow from "./ConversationRow"
 import { motion, AnimatePresence } from "framer-motion"
+
+type ConversationItem = {
+  id: string
+  title: string
+  updatedAt: string
+  messageCount: number
+  preview: string
+  pinned: boolean
+  folder: string | null
+  messages?: ConversationMessage[]
+}
+
+type ConversationMessage = {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  createdAt: string
+  editedAt?: string
+}
+
+type FolderRowProps = {
+  name: string
+  count: number
+  conversations?: ConversationItem[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+  togglePin: (id: string) => void
+  onDeleteFolder?: (name: string) => void
+  onRenameFolder?: (oldName: string, newName: string) => void
+}
 
 export default function FolderRow({
   name,
@@ -14,14 +44,14 @@ export default function FolderRow({
   togglePin,
   onDeleteFolder,
   onRenameFolder,
-}) {
+}: FolderRowProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
-  const menuRef = useRef(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
+      if (menuRef.current && event.target instanceof Node && !menuRef.current.contains(event.target)) {
         setShowMenu(false)
       }
     }
@@ -78,7 +108,7 @@ export default function FolderRow({
 
           <div className="relative" ref={menuRef}>
             <button
-              onClick={(e) => {
+              onClick={(e: MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation()
                 setShowMenu(!showMenu)
               }}

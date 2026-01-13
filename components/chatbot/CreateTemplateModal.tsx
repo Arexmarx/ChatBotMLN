@@ -1,18 +1,39 @@
 "use client"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Lightbulb } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 
-export default function CreateTemplateModal({ isOpen, onClose, onCreateTemplate, editingTemplate = null }) {
+type TemplatePayload = {
+  id?: string
+  name: string
+  content: string
+  snippet: string
+  createdAt: string
+  updatedAt: string
+}
+
+type CreateTemplateModalProps = {
+  isOpen: boolean
+  onClose: () => void
+  onCreateTemplate: (data: TemplatePayload) => void
+  editingTemplate?: TemplatePayload | null
+}
+
+export default function CreateTemplateModal({
+  isOpen,
+  onClose,
+  onCreateTemplate,
+  editingTemplate = null,
+}: CreateTemplateModalProps) {
   const [templateName, setTemplateName] = useState(editingTemplate?.name || "")
   const [templateContent, setTemplateContent] = useState(editingTemplate?.content || "")
 
   const isEditing = !!editingTemplate
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
     if (templateName.trim() && templateContent.trim()) {
-      const templateData = {
+      const templateData: TemplatePayload = {
         name: templateName.trim(),
         content: templateContent.trim(),
         snippet: templateContent.trim().slice(0, 100) + (templateContent.trim().length > 100 ? "..." : ""),
@@ -36,8 +57,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onCreateTemplate,
     onClose()
   }
 
-  // Update form when editingTemplate changes
-  useState(() => {
+  useEffect(() => {
     if (editingTemplate) {
       setTemplateName(editingTemplate.name || "")
       setTemplateContent(editingTemplate.content || "")

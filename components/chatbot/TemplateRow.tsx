@@ -4,13 +4,36 @@ import { useState, useRef, useEffect } from "react"
 import { FileText, MoreHorizontal, Copy, Edit3, Trash2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
-export default function TemplateRow({ template, onUseTemplate, onEditTemplate, onRenameTemplate, onDeleteTemplate }) {
+type TemplateItem = {
+  id: string
+  name: string
+  content: string
+  snippet: string
+  createdAt: string
+  updatedAt: string
+}
+
+type TemplateRowProps = {
+  template: TemplateItem
+  onUseTemplate?: (template: TemplateItem) => void
+  onEditTemplate?: (template: TemplateItem) => void
+  onRenameTemplate?: (id: string, newName: string) => void
+  onDeleteTemplate?: (id: string) => void
+}
+
+export default function TemplateRow({
+  template,
+  onUseTemplate,
+  onEditTemplate,
+  onRenameTemplate,
+  onDeleteTemplate,
+}: TemplateRowProps) {
   const [showMenu, setShowMenu] = useState(false)
-  const menuRef = useRef(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowMenu(false)
       }
     }

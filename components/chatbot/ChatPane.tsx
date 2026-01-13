@@ -3,10 +3,39 @@
 import { useState, forwardRef, useImperativeHandle, useRef } from "react"
 import { Pencil, RefreshCw, Check, X, Square } from "lucide-react"
 import Message from "./Message"
-import Composer from "./Composer"
+import Composer, { type ComposerHandle } from "./Composer"
 import { cls, timeAgo } from "./utils"
 
-function ThinkingMessage({ onPause }) {
+type ConversationMessage = {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  createdAt: string
+  editedAt?: string
+}
+
+type ConversationItem = {
+  id: string
+  title: string
+  updatedAt: string
+  messageCount: number
+  messages?: ConversationMessage[]
+}
+
+type ChatPaneProps = {
+  conversation: ConversationItem | null
+  onSend?: (content: string) => void | Promise<void>
+  onEditMessage?: (messageId: string, newContent: string) => void
+  onResendMessage?: (messageId: string) => void
+  isThinking: boolean
+  onPauseThinking: () => void
+}
+
+export type ChatPaneHandle = {
+  insertTemplate: (content: string) => void
+}
+
+function ThinkingMessage({ onPause }: { onPause: () => void }) {
   return (
     <Message role="assistant">
       <div className="flex items-center gap-3">
@@ -27,19 +56,19 @@ function ThinkingMessage({ onPause }) {
   )
 }
 
-const ChatPane = forwardRef(function ChatPane(
+const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
   { conversation, onSend, onEditMessage, onResendMessage, isThinking, onPauseThinking },
   ref,
 ) {
-  const [editingId, setEditingId] = useState(null)
-  const [draft, setDraft] = useState("")
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<string>("")
   const [busy, setBusy] = useState(false)
-  const composerRef = useRef(null)
+  const composerRef = useRef<ComposerHandle | null>(null)
 
   useImperativeHandle(
     ref,
     () => ({
-      insertTemplate: (templateContent) => {
+      insertTemplate: (templateContent: string) => {
         composerRef.current?.insertTemplate(templateContent)
       },
     }),
@@ -49,12 +78,12 @@ const ChatPane = forwardRef(function ChatPane(
   if (!conversation) return null
 
   const tags = ["Certified", "Personalized", "Experienced", "Helpful"]
-  const messages = Array.isArray(conversation.messages) ? conversation.messages : []
+  const messages: ConversationMessage[] = Array.isArray(conversation.messages) ? conversation.messages : []
   const count = messages.length || conversation.messageCount || 0
 
-  function startEdit(m) {
-    setEditingId(m.id)
-    setDraft(m.content)
+  function startEdit(message: ConversationMessage) {
+    setEditingId(message.id)
+    setDraft(message.content)
   }
   function cancelEdit() {
     setEditingId(null)

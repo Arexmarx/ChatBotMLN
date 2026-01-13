@@ -4,6 +4,7 @@ import "./globals.css";
 import 'react-toastify/dist/ReactToastify.css';
 import { ToastContainer } from "react-toastify";
 import "leaflet/dist/leaflet.css";
+import { AuthProvider } from "@/context/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,11 +29,13 @@ export default function RootLayout({
   return (
  <html lang="en">
       <body className={geistSans.variable}> 
-        <ToastContainer />
-          {/* Nội dung từng page */}
-          <main>
-            {children} 
-          </main>
+          <ToastContainer />
+          <AuthProvider>
+            {/* Nội dung từng page */}
+            <main>
+              {children} 
+            </main>
+          </AuthProvider>
       </body>
     </html>
   );

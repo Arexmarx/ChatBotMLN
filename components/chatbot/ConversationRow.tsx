@@ -1,18 +1,46 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, type MouseEvent } from "react"
 import { MoreHorizontal, Pin, Edit3, Trash2 } from "lucide-react"
 import { cls, timeAgo } from "./utils"
 import { motion, AnimatePresence } from "framer-motion"
 
-export default function ConversationRow({ data, active, onSelect, onTogglePin, onDelete, onRename, showMeta }) {
+type ConversationMessage = {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  createdAt: string
+  editedAt?: string
+}
+
+type ConversationItem = {
+  id: string
+  title: string
+  updatedAt: string
+  messageCount: number
+  preview: string
+  pinned: boolean
+  messages?: ConversationMessage[]
+}
+
+type ConversationRowProps = {
+  data: ConversationItem
+  active?: boolean
+  onSelect: () => void
+  onTogglePin?: () => void
+  onDelete?: (id: string) => void
+  onRename?: (id: string, newName: string) => void
+  showMeta?: boolean
+}
+
+export default function ConversationRow({ data, active = false, onSelect, onTogglePin, onDelete, onRename, showMeta = false }: ConversationRowProps) {
   const [showMenu, setShowMenu] = useState(false)
-  const menuRef = useRef(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const count = Array.isArray(data.messages) ? data.messages.length : data.messageCount
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    const handleClickOutside = (event: globalThis.MouseEvent) => {
+      if (menuRef.current && event.target instanceof Node && !menuRef.current.contains(event.target)) {
         setShowMenu(false)
       }
     }
@@ -26,13 +54,13 @@ export default function ConversationRow({ data, active, onSelect, onTogglePin, o
     }
   }, [showMenu])
 
-  const handlePin = (e) => {
+  const handlePin = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     onTogglePin?.()
     setShowMenu(false)
   }
 
-  const handleRename = (e) => {
+  const handleRename = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     const newName = prompt(`Rename chat "${data.title}" to:`, data.title)
     if (newName && newName.trim() && newName !== data.title) {
@@ -41,7 +69,7 @@ export default function ConversationRow({ data, active, onSelect, onTogglePin, o
     setShowMenu(false)
   }
 
-  const handleDelete = (e) => {
+  const handleDelete = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     if (confirm(`Are you sure you want to delete "${data.title}"?`)) {
       onDelete?.(data.id)

@@ -3,7 +3,26 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, SearchIcon, Plus, Clock } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 
-function getTimeGroup(dateString) {
+type TimeGroup = "Today" | "Yesterday" | "Previous 7 Days" | "Older"
+
+type SearchConversation = {
+  id: string
+  title: string
+  preview: string
+  updatedAt: string
+}
+
+type SearchModalProps = {
+  isOpen: boolean
+  onClose: () => void
+  conversations: SearchConversation[]
+  selectedId: string | null
+  onSelect: (id: string) => void
+  togglePin: (id: string) => void
+  createNewChat: () => void
+}
+
+function getTimeGroup(dateString: string): TimeGroup {
   const date = new Date(dateString)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -20,11 +39,11 @@ export default function SearchModal({
   isOpen,
   onClose,
   conversations,
-  selectedId,
+  selectedId: _selectedId,
   onSelect,
-  togglePin,
+  togglePin: _togglePin,
   createNewChat,
-}) {
+}: SearchModalProps) {
   const [query, setQuery] = useState("")
 
   const filteredConversations = useMemo(() => {
@@ -34,15 +53,15 @@ export default function SearchModal({
   }, [conversations, query])
 
   const groupedConversations = useMemo(() => {
-    const groups = {
+    const groups: Record<TimeGroup, SearchConversation[]> = {
       Today: [],
       Yesterday: [],
       "Previous 7 Days": [],
       Older: [],
     }
 
-    filteredConversations
-      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+    ;[...filteredConversations]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .forEach((conv) => {
         const group = getTimeGroup(conv.updatedAt)
         groups[group].push(conv)
@@ -61,13 +80,13 @@ export default function SearchModal({
     handleClose()
   }
 
-  const handleSelectConversation = (id) => {
+  const handleSelectConversation = (id: string) => {
     onSelect(id)
     handleClose()
   }
 
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose()
     }
 
@@ -75,7 +94,7 @@ export default function SearchModal({
       document.addEventListener("keydown", handleEscape)
       return () => document.removeEventListener("keydown", handleEscape)
     }
-  }, [isOpen])
+  }, [handleClose, isOpen])
 
   return (
     <AnimatePresence>
@@ -124,7 +143,7 @@ export default function SearchModal({
               </div>
 
               {/* Conversation Groups */}
-              {Object.entries(groupedConversations).map(([groupName, convs]) => {
+              {(Object.entries(groupedConversations) as Array<[TimeGroup, SearchConversation[]]>).map(([groupName, convs]) => {
                 if (convs.length === 0) return null
 
                 return (

@@ -1,9 +1,13 @@
 "use client"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { Globe, HelpCircle, Crown, BookOpen, LogOut, ChevronRight, Settings } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 
-export default function SettingsPopover({ children }) {
+type SettingsPopoverProps = {
+  children: ReactNode
+}
+
+export default function SettingsPopover({ children }: SettingsPopoverProps) {
   const [open, setOpen] = useState(false)
 
   return (

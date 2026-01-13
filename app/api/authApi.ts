@@ -16,13 +16,15 @@ export const subscribeToAuthChanges = (
 	};
 };
 
-export const signInWithGoogle = (redirectTo: string) => {
+export const signInWithGoogle = (redirectTo?: string) => {
 	const supabase = getSupabaseClient();
 	return supabase.auth.signInWithOAuth({
 		provider: "google",
-		options: {
-			redirectTo,
-		},
+		options: redirectTo
+			? {
+				redirectTo,
+			}
+			: undefined,
 	});
 };
 
