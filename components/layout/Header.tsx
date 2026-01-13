@@ -1,205 +1,299 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Send, Facebook, Instagram } from "lucide-react";
+import { Menu, X, LogIn, ChevronDown, History, LogOut } from "lucide-react";
+import {
+  fetchSupabaseSession,
+  subscribeToAuthChanges,
+  signInWithGoogle,
+  signOutUser,
+} from "@/app/api/authApi";
+import type { User } from "@supabase/supabase-js";
 
-interface FooterProps {
+interface HeaderProps {
   className?: string;
 }
 
-const Footer: React.FC<FooterProps> = ({ className = "" }) => {
-  const [email, setEmail] = useState("");
+const NAV_LINKS = [
+  { href: "/", label: "Trang chủ" },
+  { href: "/kien-thuc", label: "Kho tư liệu" },
+  { href: "/moc-lich-su", label: "Mốc lịch sử" },
+  { href: "/nhan-vat", label: "Nhân vật" },
+];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle email submission
-    console.log("Email submitted:", email);
-    setEmail("");
+const Header: React.FC<HeaderProps> = ({ className = "" }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  const avatarData = useMemo(() => {
+    if (!currentUser) {
+      return { url: null as string | null, initial: "" };
+    }
+
+    const metadata = currentUser.user_metadata ?? {};
+    const rawUrl =
+      typeof metadata.avatar_url === "string"
+        ? metadata.avatar_url
+        : typeof metadata.picture === "string"
+        ? metadata.picture
+        : null;
+
+    const emailInitial = currentUser.email?.charAt(0)?.toUpperCase();
+    const nameInitial =
+      typeof metadata.full_name === "string"
+        ? metadata.full_name.charAt(0).toUpperCase()
+        : undefined;
+
+    return {
+      url: rawUrl,
+      initial: emailInitial || nameInitial || "U",
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    let isMounted = true;
+    let unsubscribe: (() => void) | null = null;
+
+    const initSession = async () => {
+      try {
+        const { data } = await fetchSupabaseSession();
+        if (!isMounted) return;
+        setCurrentUser(data.session?.user ?? null);
+      } catch (error) {
+        console.error("Failed to retrieve session", error);
+      } finally {
+        if (isMounted) {
+          setCheckingSession(false);
+        }
+      }
+    };
+
+    try {
+      unsubscribe = subscribeToAuthChanges((_event, session) => {
+        if (!isMounted) {
+          return;
+        }
+        setCurrentUser(session?.user ?? null);
+        setAuthOpen(false);
+        setAuthLoading(false);
+      });
+    } catch (error) {
+      console.error("Failed to subscribe to auth changes", error);
+      setCheckingSession(false);
+    }
+
+    initSession();
+
+    return () => {
+      isMounted = false;
+      unsubscribe?.();
+    };
+  }, []);
+
+  const toggleMenu = () => {
+    setMenuOpen((prev) => !prev);
+    setAuthOpen(false);
+  };
+
+  const toggleAuth = () => {
+    setAuthOpen((prev) => !prev);
+    setMenuOpen(false);
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setAuthLoading(true);
+      const redirectTo = `${window.location.origin}/authenticated`;
+      const { error } = await signInWithGoogle(redirectTo);
+
+      if (error) {
+        console.error("Google login failed", error);
+        setAuthLoading(false);
+        return;
+      }
+
+      setAuthOpen(false);
+    } catch (err) {
+      console.error("Supabase client unavailable", err);
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await signOutUser();
+      if (error) {
+        console.error("Google logout failed", error);
+        return;
+      }
+      setAuthOpen(false);
+    } catch (err) {
+      console.error("Supabase client unavailable", err);
+    }
   };
 
   return (
-    <footer
-      className={`bg-gray-50 border-t-4 border-blue-500 px-6 py-8 ${className}`}
+    <header
+      className={`bg-white border-b border-gray-200 shadow-sm ${className}`}
     >
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Logo and Contact Info */}
-          <div className="space-y-4">
-            <div className="flex items-center mb-6">
-              <Link href="#" className="flex items-center">
-                <div className="h-14 w-[140px] overflow-hidden flex items-center justify-center">
-                  <img
-                    src="https://res.cloudinary.com/dkzn3xjwt/image/upload/v1759841621/LOGO_WEB_BLACK_orslzj.png"
-                    alt="Logo"
-                    className="object-contain scale-[0.85]"
-                  />
-                </div>
-              </Link>
+      <div className="relative mx-auto flex max-w-7xl flex-col px-6 py-4">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <History className="h-5 w-5" />
+            </span>
+            <div className="flex flex-col">
+              <span className="text-base font-semibold text-gray-900">
+                Việt Sử Chatbot
+              </span>
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Khám phá lịch sử Việt Nam
+              </span>
             </div>
+          </Link>
 
-            <div className="space-y-2 text-sm text-gray-700">
-              <p>
-                <span className="font-medium">Cần giúp đỡ</span>
-              </p>
-              <p>
-                <span className="font-medium">Gọi chúng tôi: </span>
-                <span className="text-red-500 font-bold">098 325 9324</span>
-              </p>
-              <p>TP Thủ Đức, TP Hồ Chí Minh</p>
-              <p>hexaplanner@gmail.com</p>
-            </div>
-          </div>
+          <nav className="hidden items-center gap-6 text-sm font-medium text-gray-600 md:flex">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="transition-colors hover:text-red-600"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
 
-          {/* Company Info */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-800 text-base mb-4">
-              Công ty
-            </h3>
-            <div className="space-y-3">
-              <Link
-                href="#"
-                className="block text-sm text-gray-600 hover:text-purple-600 transition-colors"
+          <div className="flex items-center gap-3">
+            {currentUser ? (
+              <button
+                type="button"
+                onClick={toggleAuth}
+                className="flex items-center gap-2 rounded-full border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-red-50"
               >
-                Về chúng tôi
-              </Link>
-              <Link
-                href="#"
-                className="block text-sm text-gray-600 hover:text-purple-600 transition-colors"
+                <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-red-100 text-red-600">
+                  {avatarData.url ? (
+                    <img
+                      src={avatarData.url}
+                      alt={currentUser.email ?? "Người dùng"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    avatarData.initial
+                  )}
+                </span>
+                <span className="hidden max-w-[160px] truncate text-left text-xs font-semibold uppercase tracking-wide text-gray-500 md:block">
+                  {currentUser.email ?? "Đã đăng nhập"}
+                </span>
+                <ChevronDown className="h-4 w-4 text-red-500" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={toggleAuth}
+                disabled={checkingSession}
+                className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:bg-red-100/60"
               >
-                Liên hệ chúng tôi
-              </Link>
-              <Link
-                href="#"
-                className="block text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Hướng dẫn du lịch
-              </Link>
-              <Link
-                href="#"
-                className="block text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Chính sách đổi lịch
-              </Link>
-            </div>
-          </div>
-
-          {/* Popular Destinations */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-800 text-base mb-4">
-              Địa điểm nổi bật
-            </h3>
-            <div className="grid grid-cols-2 gap-y-3 gap-x-4">
-              <Link
-                href="/phu-quoc"
-                className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Phú Quốc
-              </Link>
-              <Link
-                href="/hoi-an"
-                className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Hội An
-              </Link>
-              <Link
-                href="/phan-thiet"
-                className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Phan Thiết
-              </Link>
-              <Link
-                href="/ha-noi"
-                className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Hà Nội
-              </Link>
-              <Link
-                href="/da-lat"
-                className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Đà Lạt
-              </Link>
-              <Link
-                href="/ho-chi-minh"
-                className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Hồ Chí Minh
-              </Link>
-              <Link
-                href="/nha-trang"
-                className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Nha Trang
-              </Link>
-              <Link
-                href="/sapa"
-                className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
-              >
-                Sa pa
-              </Link>
-            </div>
-          </div>
-
-          {/* Newsletter Signup */}
-          <div className="space-y-4">
-            <h3 className="font-medium text-gray-800 text-sm mb-4">
-              Đăng ký nhận thông tin mới nhất
-            </h3>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="relative">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Nhập Email"
-                  className="w-full px-4 py-3 bg-purple-100 border border-purple-200 rounded-lg text-sm placeholder-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-                  required
-                />
-                <button
-                  type="submit"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-purple-600 text-white p-2 rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
-            </form>
-
-            {/* Social Icons */}
-            <div className="flex space-x-3 mt-6">
-              <Link
-                href="https://www.facebook.com/profile.php?id=61580875525961"
-                className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white hover:bg-blue-700 transition-colors"
-              >
-                <Facebook className="h-5 w-5" />
-              </Link>
-              <Link
-                href="#"
-                className="w-10 h-10 bg-pink-500 rounded-lg flex items-center justify-center text-white hover:bg-pink-600 transition-colors"
-              >
-                <Instagram className="h-5 w-5" />
-              </Link>
-              <Link
-                href="#"
-                className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white hover:bg-blue-600 transition-colors"
-              >
-                <div className="w-5 h-5 bg-white rounded-sm flex items-center justify-center">
-                  <span className="text-blue-500 font-bold text-xs">D</span>
-                </div>
-              </Link>
-            </div>
-
-            {/* Copyright */}
-            <div className="mt-6 pt-4">
-              <p className="text-xs text-gray-500">
-                2025 HexaCore All Right Reserved
-              </p>
-            </div>
+                <LogIn className="h-4 w-4" />
+                Đăng nhập
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={toggleMenu}
+              className="rounded-md border border-gray-200 p-2 text-gray-600 transition-colors hover:bg-gray-100 md:hidden"
+              aria-label="Toggle navigation"
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        {authOpen && !currentUser && (
+          <div className="absolute right-6 top-full z-20 mt-3 w-64 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+            <p className="text-xs font-semibold uppercase text-gray-500">
+              Đăng nhập chatbot
+            </p>
+            <p className="mt-2 text-sm text-gray-600">
+              Sử dụng tài khoản Google để tiếp tục trải nghiệm Việt sử cùng AI.
+            </p>
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={authLoading}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-red-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-400"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded bg-white text-red-500">
+                G
+              </span>
+              {authLoading ? "Đang xử lý..." : "Đăng nhập với Google"}
+            </button>
+            {authLoading && (
+              <p className="mt-3 text-xs text-red-500">
+                Vui lòng chờ, bạn sẽ được chuyển đến Google.
+              </p>
+            )}
+          </div>
+        )}
+
+        {authOpen && currentUser && (
+          <div className="absolute right-6 top-full z-20 mt-3 w-72 rounded-lg border border-gray-200 bg-white p-5 shadow-lg">
+            <p className="text-xs font-semibold uppercase text-gray-500">
+              Tài khoản của bạn
+            </p>
+            <div className="mt-3 flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-red-100 text-lg font-semibold text-red-600">
+                {avatarData.url ? (
+                  <img
+                    src={avatarData.url}
+                    alt={currentUser.email ?? "Người dùng"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  avatarData.initial
+                )}
+              </span>
+              <div className="flex flex-col text-sm text-gray-700">
+                <span className="font-semibold text-gray-900">
+                  {currentUser.user_metadata?.full_name || "Người dùng"}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {currentUser.email}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4" />
+              Đăng xuất
+            </button>
+          </div>
+        )}
+
+        {menuOpen && (
+          <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4 text-sm text-gray-600 md:hidden">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-md px-3 py-2 transition-colors hover:bg-red-50 hover:text-red-600"
+                onClick={() => setMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
-    </footer>
+    </header>
   );
 };
 
-export default Footer;
+export default Header;
