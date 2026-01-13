@@ -5,6 +5,8 @@ import { Pencil, RefreshCw, Check, X, Square } from "lucide-react"
 import Message from "./Message"
 import Composer, { type ComposerHandle } from "./Composer"
 import { cls, timeAgo } from "./utils"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 type ConversationMessage = {
   id: string
@@ -161,7 +163,39 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
                   </div>
                 ) : (
                   <Message role={m.role}>
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                    {m.role === "assistant" ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-pre:my-2 prose-ul:my-2 prose-ol:my-2">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            // Customize styling for markdown elements
+                            p: ({ children }) => <p className="my-2">{children}</p>,
+                            ul: ({ children }) => <ul className="my-2 ml-4 list-disc">{children}</ul>,
+                            ol: ({ children }) => <ol className="my-2 ml-4 list-decimal">{children}</ol>,
+                            li: ({ children }) => <li className="my-1">{children}</li>,
+                            code: ({ inline, children, ...props }: any) =>
+                              inline ? (
+                                <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs dark:bg-zinc-800" {...props}>
+                                  {children}
+                                </code>
+                              ) : (
+                                <code className="block rounded bg-zinc-100 p-2 text-xs dark:bg-zinc-800" {...props}>
+                                  {children}
+                                </code>
+                              ),
+                            a: ({ children, href }) => (
+                              <a href={href} className="text-blue-600 hover:underline dark:text-blue-400" target="_blank" rel="noopener noreferrer">
+                                {children}
+                              </a>
+                            ),
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <div className="whitespace-pre-wrap">{m.content}</div>
+                    )}
                     {m.role === "user" && (
                       <div className="mt-1 flex gap-2 text-[11px] text-zinc-500">
                         <button className="inline-flex items-center gap-1 hover:underline" onClick={() => startEdit(m)}>

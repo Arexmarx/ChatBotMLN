@@ -89,6 +89,7 @@ type SidebarProps = {
   createFolder: (name: string) => void
   deleteFolder?: (name: string) => void
   renameFolder?: (oldName: string, newName: string) => void
+  renameConversation?: (id: string, newTitle: string) => void
   createNewChat: () => void
   templates?: TemplateItem[]
   setTemplates?: Dispatch<SetStateAction<TemplateItem[]>>
@@ -119,6 +120,7 @@ export default function Sidebar({
   createFolder,
   deleteFolder,
   renameFolder,
+  renameConversation,
   createNewChat,
   templates = [],
   setTemplates,
@@ -157,8 +159,8 @@ export default function Sidebar({
     setCollapsed((prev) => ({ ...prev, folders: false }))
   }
 
-  const getConversationsByFolder = (folderName: string) =>
-    conversations.filter((conversation) => conversation.folder === folderName)
+  const getConversationsByFolder = (folderId: string) =>
+    conversations.filter((conversation) => conversation.folder === folderId)
 
   const handleCreateFolder = (folderName: string) => {
     const trimmed = folderName.trim()
@@ -440,6 +442,7 @@ export default function Sidebar({
                       active={conversation.id === selectedId}
                       onSelect={() => onSelect(conversation.id)}
                       onTogglePin={() => togglePin(conversation.id)}
+                      onRename={(id, newTitle) => renameConversation?.(id, newTitle)}
                     />
                   ))
                 )}
@@ -463,6 +466,7 @@ export default function Sidebar({
                       active={conversation.id === selectedId}
                       onSelect={() => onSelect(conversation.id)}
                       onTogglePin={() => togglePin(conversation.id)}
+                      onRename={(id, newTitle) => renameConversation?.(id, newTitle)}
                       showMeta
                     />
                   ))
@@ -487,8 +491,8 @@ export default function Sidebar({
                     <FolderRow
                       key={folder.id}
                       name={folder.name}
-                      count={folderCounts[folder.name] ?? 0}
-                      conversations={getConversationsByFolder(folder.name)}
+                      count={folderCounts[folder.id] ?? 0}
+                      conversations={getConversationsByFolder(folder.id)}
                       selectedId={selectedId}
                       onSelect={onSelect}
                       togglePin={togglePin}

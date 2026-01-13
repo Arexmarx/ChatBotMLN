@@ -8,9 +8,21 @@ import Header from "./Header"
 import ChatPane from "./ChatPane"
 import GhostIconButton from "./GhostIconButton"
 import ThemeToggle from "./ThemeToggle"
-import { INITIAL_CONVERSATIONS, INITIAL_TEMPLATES, INITIAL_FOLDERS } from "./mockData"
 import { fetchSupabaseSession, subscribeToAuthChanges } from "@/app/api/authApi"
 import type { User } from "@supabase/supabase-js"
+import {
+  getConversations,
+  getFolders,
+  getTemplates,
+  createConversation,
+  createFolder as createFolderDB,
+  deleteFolder as deleteFolderDB,
+  updateFolder,
+  toggleConversationPin,
+  updateMessage,
+  getConversationWithMessages,
+  updateConversation,
+} from "@/lib/chatbotService"
 
 type ConversationMessage = {
   id: string
@@ -108,11 +120,12 @@ export default function AIAssistantUI() {
     } catch {}
   }, [sidebarCollapsed])
 
-  const [conversations, setConversations] = useState<ConversationItem[]>(INITIAL_CONVERSATIONS as ConversationItem[])
+  const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [templates, setTemplates] = useState<TemplateItem[]>(INITIAL_TEMPLATES as TemplateItem[])
-  const [folders, setFolders] = useState<FolderItem[]>(INITIAL_FOLDERS as FolderItem[])
+  const [templates, setTemplates] = useState<TemplateItem[]>([])
+  const [folders, setFolders] = useState<FolderItem[]>([])
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const [query, setQuery] = useState("")
   const searchRef = useRef<HTMLInputElement | null>(null)
@@ -137,13 +150,67 @@ export default function AIAssistantUI() {
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [sidebarOpen, conversations])
+  }, [sidebarOpen]) // Removed conversations and createNewChat from deps
 
+  // Load data from database when user is available
   useEffect(() => {
-    if (!selectedId && conversations.length > 0) {
-      createNewChat()
+    if (!currentUser) {
+      setLoading(false)
+      return
     }
-  }, [])
+
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const [conversationsData, foldersData, templatesData] = await Promise.all([
+          getConversations(currentUser.id),
+          getFolders(currentUser.id),
+          getTemplates(currentUser.id),
+        ])
+
+        // Convert database format to component format
+        const formattedConversations: ConversationItem[] = conversationsData.map((conv) => ({
+          id: conv.id,
+          title: conv.title,
+          updatedAt: conv.updated_at,
+          messageCount: conv.message_count,
+          preview: conv.preview || "",
+          pinned: conv.pinned,
+          folder: conv.folder_id || null,
+          messages: [],
+        }))
+
+        const formattedFolders: FolderItem[] = foldersData.map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+        }))
+
+        const formattedTemplates: TemplateItem[] = templatesData.map((template) => ({
+          id: template.id,
+          name: template.name,
+          content: template.content,
+          snippet: template.snippet || "",
+          createdAt: template.created_at,
+          updatedAt: template.updated_at,
+        }))
+
+        setConversations(formattedConversations)
+        setFolders(formattedFolders)
+        setTemplates(formattedTemplates)
+
+        // Select first conversation or create new one
+        if (formattedConversations.length > 0) {
+          setSelectedId(formattedConversations[0].id)
+        }
+      } catch (error) {
+        console.error("Error loading chatbot data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [currentUser])
 
   useEffect(() => {
     let mounted = true
@@ -178,6 +245,35 @@ export default function AIAssistantUI() {
     }
   }, [router])
 
+  // Load messages when conversation is selected
+  useEffect(() => {
+    if (!selectedId) return
+
+    const loadMessages = async () => {
+      const conversation = conversations.find((c) => c.id === selectedId)
+      if (!conversation || conversation.messages.length > 0) return // Already loaded
+
+      const conversationWithMessages = await getConversationWithMessages(selectedId)
+      if (conversationWithMessages) {
+        const formattedMessages: ConversationMessage[] = conversationWithMessages.messages.map((msg) => ({
+          id: msg.id,
+          role: msg.role as "user" | "assistant",
+          content: msg.content,
+          createdAt: msg.created_at,
+          editedAt: msg.edited_at || undefined,
+        }))
+
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedId ? { ...c, messages: formattedMessages } : c
+          )
+        )
+      }
+    }
+
+    loadMessages()
+  }, [selectedId, conversations])
+
   const filtered = useMemo<ConversationItem[]>(() => {
     if (!query.trim()) return conversations
     const q = query.toLowerCase()
@@ -192,7 +288,7 @@ export default function AIAssistantUI() {
     .slice(0, 10)
 
   const folderCounts = React.useMemo<Record<string, number>>(() => {
-    const map = Object.fromEntries(folders.map((f) => [f.name, 0])) as Record<string, number>
+    const map = Object.fromEntries(folders.map((f) => [f.id, 0])) as Record<string, number>
     for (const c of conversations) {
       if (c.folder && map[c.folder] != null) {
         map[c.folder] += 1
@@ -201,45 +297,80 @@ export default function AIAssistantUI() {
     return map
   }, [conversations, folders])
 
-  function togglePin(id: string) {
-    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned: !c.pinned } : c)))
-  }
+  async function togglePin(id: string) {
+    const conversation = conversations.find((c) => c.id === id)
+    if (!conversation) return
 
-  function createNewChat() {
-    const id = Math.random().toString(36).slice(2)
-    const item: ConversationItem = {
-      id,
-      title: "New Chat",
-      updatedAt: new Date().toISOString(),
-      messageCount: 0,
-      preview: "Say hello to start...",
-      pinned: false,
-      folder: "Work Projects",
-      messages: [],
+    const newPinned = !conversation.pinned
+    const success = await toggleConversationPin(id, newPinned)
+
+    if (success) {
+      setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, pinned: newPinned } : c)))
+    } else {
+      alert("Failed to update pin status")
     }
-    setConversations((prev) => [item, ...prev])
-    setSelectedId(id)
-    setSidebarOpen(false)
   }
 
-  function createFolder(name: string) {
+  async function createNewChat() {
+    if (!currentUser) return
+
+    const newConv = await createConversation(currentUser.id, {
+      title: "New Chat",
+    })
+
+    if (newConv) {
+      const item: ConversationItem = {
+        id: newConv.id,
+        title: newConv.title,
+        updatedAt: newConv.updated_at,
+        messageCount: newConv.message_count,
+        preview: newConv.preview || "",
+        pinned: newConv.pinned,
+        folder: newConv.folder_id,
+        messages: [],
+      }
+      setConversations((prev) => [item, ...prev])
+      setSelectedId(item.id)
+      setSidebarOpen(false)
+    } else {
+      alert("Failed to create conversation")
+    }
+  }
+
+  async function createFolder(name: string) {
+    if (!currentUser) return
+
     const trimmed = name.trim()
     if (!trimmed) return
     if (folders.some((folder) => folder.name.toLowerCase() === trimmed.toLowerCase())) {
       alert("Folder already exists.")
       return
     }
-    setFolders((prev) => [...prev, { id: Math.random().toString(36).slice(2), name: trimmed }])
+
+    const newFolder = await createFolderDB(currentUser.id, trimmed)
+    if (newFolder) {
+      setFolders((prev) => [...prev, { id: newFolder.id, name: newFolder.name }])
+    } else {
+      alert("Failed to create folder")
+    }
   }
 
-  function deleteFolder(name: string) {
-    setFolders((prev) => prev.filter((folder) => folder.name !== name))
-    setConversations((prev) =>
-      prev.map((conversation) => (conversation.folder === name ? { ...conversation, folder: null } : conversation)),
-    )
+  async function deleteFolder(name: string) {
+    const folder = folders.find((f) => f.name === name)
+    if (!folder) return
+
+    const success = await deleteFolderDB(folder.id)
+    if (success) {
+      setFolders((prev) => prev.filter((f) => f.id !== folder.id))
+      setConversations((prev) =>
+        prev.map((conversation) => (conversation.folder === folder.id ? { ...conversation, folder: null } : conversation)),
+      )
+    } else {
+      alert("Failed to delete folder")
+    }
   }
 
-  function renameFolder(oldName: string, newName: string) {
+  async function renameFolder(oldName: string, newName: string) {
     const trimmed = newName.trim()
     if (!trimmed || trimmed === oldName) return
     if (folders.some((folder) => folder.name.toLowerCase() === trimmed.toLowerCase())) {
@@ -247,69 +378,148 @@ export default function AIAssistantUI() {
       return
     }
 
-    setFolders((prev) => prev.map((folder) => (folder.name === oldName ? { ...folder, name: trimmed } : folder)))
-    setConversations((prev) =>
-      prev.map((conversation) => (conversation.folder === oldName ? { ...conversation, folder: trimmed } : conversation)),
-    )
+    const folder = folders.find((f) => f.name === oldName)
+    if (!folder) return
+
+    const updated = await updateFolder(folder.id, trimmed)
+    if (updated) {
+      setFolders((prev) => prev.map((f) => (f.id === folder.id ? { ...f, name: trimmed } : f)))
+      // No need to update conversations, folder_id stays the same
+    } else {
+      alert("Failed to rename folder")
+    }
   }
 
-  function sendMessage(convId: string, content: string) {
-    if (!content.trim()) return
-    const now = new Date().toISOString()
-    const userMsg: ConversationMessage = { id: Math.random().toString(36).slice(2), role: "user", content, createdAt: now }
+  async function renameConversation(id: string, newTitle: string) {
+    const trimmed = newTitle.trim()
+    if (!trimmed) return
+
+    const updated = await updateConversation(id, { title: trimmed })
+    if (updated) {
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, title: trimmed } : c))
+      )
+    } else {
+      alert("Failed to rename conversation")
+    }
+  }
+
+  async function sendMessage(convId: string, content: string) {
+    if (!content.trim() || !currentUser) return
+
+    // Optimistically add user message to UI
+    const tempUserMsg: ConversationMessage = {
+      id: "temp-" + Date.now(),
+      role: "user",
+      content: content,
+      createdAt: new Date().toISOString(),
+    }
 
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== convId) return c
-        const msgs = [...(c.messages || []), userMsg]
+        const msgs = [...(c.messages || []), tempUserMsg]
         return {
           ...c,
           messages: msgs,
-          updatedAt: now,
+          updatedAt: new Date().toISOString(),
           messageCount: msgs.length,
           preview: content.slice(0, 80),
         }
       }),
     )
 
+    // Show thinking state
     setIsThinking(true)
     setThinkingConvId(convId)
 
-    const currentConvId = convId
-    setTimeout(() => {
-      // Always clear thinking state and generate response for this specific conversation
-      setIsThinking(false)
-      setThinkingConvId(null)
+    try {
+      // Call chat API
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          conversationId: convId,
+          message: content,
+          userId: currentUser.id,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to send message")
+      }
+
+      const data = await response.json()
+
+      // Update with real messages from server
       setConversations((prev) =>
         prev.map((c) => {
-          if (c.id !== currentConvId) return c
-          const ack = `Got it — I'll help with that.`
-          const asstMsg: ConversationMessage = {
-            id: Math.random().toString(36).slice(2),
-            role: "assistant",
-            content: ack,
-            createdAt: new Date().toISOString(),
+          if (c.id !== convId) return c
+          
+          // Remove temp message and add real messages
+          const msgs = c.messages.filter(m => !m.id.startsWith("temp-"))
+          
+          const userMsg: ConversationMessage = {
+            id: data.userMessage.id,
+            role: data.userMessage.role,
+            content: data.userMessage.content,
+            createdAt: data.userMessage.createdAt,
           }
-          const msgs = [...(c.messages || []), asstMsg]
+
+          const assistantMsg: ConversationMessage = {
+            id: data.assistantMessage.id,
+            role: data.assistantMessage.role,
+            content: data.assistantMessage.content,
+            createdAt: data.assistantMessage.createdAt,
+          }
+
+          const newMsgs = [...msgs, userMsg, assistantMsg]
+
           return {
             ...c,
-            messages: msgs,
+            messages: newMsgs,
             updatedAt: new Date().toISOString(),
-            messageCount: msgs.length,
-            preview: asstMsg.content.slice(0, 80),
+            messageCount: newMsgs.length,
+            preview: assistantMsg.content.slice(0, 80),
           }
         }),
       )
-    }, 2000)
+    } catch (error) {
+      console.error("Error sending message:", error)
+      alert("Failed to send message. Please try again.")
+      
+      // Remove temp message on error
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== convId) return c
+          return {
+            ...c,
+            messages: c.messages.filter(m => !m.id.startsWith("temp-")),
+          }
+        }),
+      )
+    } finally {
+      setIsThinking(false)
+      setThinkingConvId(null)
+    }
   }
 
-  function editMessage(convId: string, messageId: string, newContent: string) {
-    const now = new Date().toISOString()
+  async function editMessage(convId: string, messageId: string, newContent: string) {
+    // Update in database
+    const updated = await updateMessage(messageId, newContent)
+    if (!updated) {
+      alert("Failed to update message")
+      return
+    }
+
+    // Update local state
     setConversations((prev) =>
       prev.map((c) => {
         if (c.id !== convId) return c
         const msgs = (c.messages || []).map((m) =>
-          m.id === messageId ? { ...m, content: newContent, editedAt: now } : m,
+          m.id === messageId ? { ...m, content: newContent, editedAt: updated.edited_at || undefined } : m,
         )
         return {
           ...c,
@@ -343,6 +553,18 @@ export default function AIAssistantUI() {
   const composerRef = useRef<{ insertTemplate: (content: string) => void } | null>(null)
 
   const selected = conversations.find((c) => c.id === selectedId) || null
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="fixed inset-0 h-screen w-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-red-600 border-r-transparent"></div>
+          <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">Loading chatbot...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 h-screen w-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -389,6 +611,7 @@ export default function AIAssistantUI() {
           createFolder={createFolder}
           deleteFolder={deleteFolder}
           renameFolder={renameFolder}
+          renameConversation={renameConversation}
           createNewChat={createNewChat}
           templates={templates}
           setTemplates={setTemplates}
