@@ -1,3 +1,4 @@
+"use client";
 import Headers from "../components/layout/Header";
 import HomePage from "@/components/common/HomePage";
 import { useEffect, useState } from "react";
