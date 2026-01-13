@@ -1,14 +1,15 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Menu, X, LogIn, ChevronDown, History, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Menu, X, LogIn, ChevronDown, History, LogOut, Pencil } from "lucide-react";
 import {
   fetchSupabaseSession,
   subscribeToAuthChanges,
-  signInWithGoogle,
   signOutUser,
 } from "@/app/api/authApi";
 import type { User } from "@supabase/supabase-js";
+import EditProfileModal from "./EditProfileModal";
 
 interface HeaderProps {
   className?: string;
@@ -22,11 +23,12 @@ const NAV_LINKS = [
 ];
 
 const Header: React.FC<HeaderProps> = ({ className = "" }) => {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   const avatarData = useMemo(() => {
     if (!currentUser) {
@@ -78,7 +80,6 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
         }
         setCurrentUser(session?.user ?? null);
         setAuthOpen(false);
-        setAuthLoading(false);
       });
     } catch (error) {
       console.error("Failed to subscribe to auth changes", error);
@@ -103,23 +104,8 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
     setMenuOpen(false);
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      setAuthLoading(true);
-      const redirectTo = `${window.location.origin}/authenticated`;
-      const { error } = await signInWithGoogle(redirectTo);
-
-      if (error) {
-        console.error("Google login failed", error);
-        setAuthLoading(false);
-        return;
-      }
-
-      setAuthOpen(false);
-    } catch (err) {
-      console.error("Supabase client unavailable", err);
-      setAuthLoading(false);
-    }
+  const handleLoginClick = () => {
+    router.push("/auth");
   };
 
   const handleSignOut = async () => {
@@ -133,6 +119,19 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
     } catch (err) {
       console.error("Supabase client unavailable", err);
     }
+  };
+
+  const handleEditProfile = () => {
+    setAuthOpen(false);
+    setIsEditProfileOpen(true);
+  };
+
+  const handleProfileUpdate = (data: { name: string; avatarFile: File | null }) => {
+    // Here you would typically call an API to update the user profile
+    // For now, we just log the data
+    console.log("Profile update data:", data);
+    // You can implement the actual update logic here
+    // e.g., call supabase.auth.updateUser({ data: { full_name: data.name } })
   };
 
   return (
@@ -193,13 +192,12 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
             ) : (
               <button
                 type="button"
-                onClick={toggleAuth}
+                onClick={handleLoginClick}
                 disabled={checkingSession}
                 className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:bg-red-100/60"
               >
                 <LogIn className="h-4 w-4" />
                 Đăng nhập
-                <ChevronDown className="h-4 w-4" />
               </button>
             )}
             <button
@@ -212,33 +210,6 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
             </button>
           </div>
         </div>
-
-        {authOpen && !currentUser && (
-          <div className="absolute right-6 top-full z-20 mt-3 w-64 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
-            <p className="text-xs font-semibold uppercase text-gray-500">
-              Đăng nhập chatbot
-            </p>
-            <p className="mt-2 text-sm text-gray-600">
-              Sử dụng tài khoản Google để tiếp tục trải nghiệm Việt sử cùng AI.
-            </p>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={authLoading}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-red-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-400"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded bg-white text-red-500">
-                G
-              </span>
-              {authLoading ? "Đang xử lý..." : "Đăng nhập với Google"}
-            </button>
-            {authLoading && (
-              <p className="mt-3 text-xs text-red-500">
-                Vui lòng chờ, bạn sẽ được chuyển đến Google.
-              </p>
-            )}
-          </div>
-        )}
 
         {authOpen && currentUser && (
           <div className="absolute right-6 top-full z-20 mt-3 w-72 rounded-lg border border-gray-200 bg-white p-5 shadow-lg">
@@ -266,14 +237,29 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
                 </span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
-            >
-              <LogOut className="h-4 w-4" />
-              Đăng xuất
-            </button>
+
+            {/* Menu Actions */}
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={handleEditProfile}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                <Pencil className="h-4 w-4 text-gray-500" />
+                Chỉnh sửa hồ sơ
+              </button>
+              
+              <div className="h-px bg-gray-100" />
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4" />
+                Đăng xuất
+              </button>
+            </div>
           </div>
         )}
 
@@ -292,6 +278,16 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
           </div>
         )}
       </div>
+
+      {/* Edit Profile Modal */}
+      {currentUser && (
+        <EditProfileModal
+          isOpen={isEditProfileOpen}
+          onClose={() => setIsEditProfileOpen(false)}
+          user={currentUser}
+          onProfileUpdate={handleProfileUpdate}
+        />
+      )}
     </header>
   );
 };
