@@ -1,7 +1,6 @@
-'use client'
-import { useEffect, useState } from "react";
 import Headers from "../components/layout/Header";
 import HomePage from "@/components/common/HomePage";
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const [viewCount, setViewCount] = useState<number | null>(null);
