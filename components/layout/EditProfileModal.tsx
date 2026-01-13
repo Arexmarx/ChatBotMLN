@@ -2,12 +2,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { X, Camera, Loader2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
+import { upsertUserProfile } from "@/lib/profileService";
 
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: User;
-  onProfileUpdate?: (data: { name: string; avatarFile: File | null }) => void;
+  onProfileUpdate?: (data: { name: string; avatarUrl: string }) => void;
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({
@@ -85,18 +87,45 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
     setIsLoading(true);
 
     try {
-      // Mock API call - simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      let uploadedAvatarUrl = currentAvatarUrl;
+
+      // Upload avatar to Cloudinary if user selected a new image
+      if (avatarFile) {
+        uploadedAvatarUrl = await uploadImageToCloudinary(avatarFile);
+        console.log("Avatar uploaded to Cloudinary:", uploadedAvatarUrl);
+      }
+
+      // Update user profile in database (not user_metadata)
+      const { error } = await upsertUserProfile(
+        user.id,
+        name,
+        uploadedAvatarUrl || ""
+      );
+      
+      if (error) {
+        console.error("Failed to update profile:", error);
+        alert("Không thể cập nhật hồ sơ. Vui lòng thử lại.");
+        return;
+      }
+
+      console.log("Profile updated successfully:", { name, avatarUrl: uploadedAvatarUrl });
 
       // Call the update callback
-      onProfileUpdate?.({ name, avatarFile });
-
-      console.log("Profile updated:", { name, avatarFile: avatarFile?.name });
+      onProfileUpdate?.({ name, avatarUrl: uploadedAvatarUrl || "" });
 
       // Close modal after successful update
+      alert("Cập nhật hồ sơ thành công!");
       onClose();
+      
+      // Reload page to reflect changes
+      window.location.reload();
     } catch (error) {
       console.error("Failed to update profile:", error);
+      alert(
+        error instanceof Error 
+          ? `Lỗi: ${error.message}` 
+          : "Không thể cập nhật hồ sơ. Vui lòng kiểm tra kết nối và thử lại."
+      );
     } finally {
       setIsLoading(false);
     }

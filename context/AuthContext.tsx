@@ -4,10 +4,12 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Session, User } from "@supabase/supabase-js";
 import { fetchSupabaseSession, signInWithGoogle, signOutUser, subscribeToAuthChanges } from "@/app/api/authApi";
 import { getSupabaseClient } from "@/lib/supabaseClient";
+import { createInitialProfile, getUserProfile, type UserProfile } from "@/lib/profileService";
 
 type AuthContextValue = {
   user: User | null;
   session: Session | null;
+  profile: UserProfile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
@@ -19,7 +21,31 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Load profile from database when user changes
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+
+    const loadProfile = async () => {
+      const userProfile = await getUserProfile(user.id);
+      
+      // If no profile exists, create one from OAuth data
+      if (!userProfile) {
+        await createInitialProfile(user.id, user.email, user.user_metadata);
+        const newProfile = await getUserProfile(user.id);
+        setProfile(newProfile);
+      } else {
+        setProfile(userProfile);
+      }
+    };
+
+    loadProfile();
+  }, [user]);
 
   useEffect(() => {
     let mounted = true;
@@ -86,8 +112,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, session, loading, login, loginWithGoogle, logout }),
-    [user, session, loading],
+    () => ({ user, session, profile, loading, login, loginWithGoogle, logout }),
+    [user, session, profile, loading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

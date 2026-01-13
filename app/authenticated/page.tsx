@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { CheckCircle, Loader2, AlertTriangle } from "lucide-react"
 import { getSupabaseClient } from "@/lib/supabaseClient"
+import { syncUserProfile } from "@/lib/userService"
 
 type AuthStatus = "verifying" | "success" | "error"
 
@@ -108,7 +109,29 @@ function AuthenticatedContent() {
         }
 
         if (data?.user) {
-          setEmail(data.user.email ?? null)
+          const user = data.user
+          const metadata = user.user_metadata || {}
+          
+          // Sync user profile with backend database
+          const syncedUser = await syncUserProfile(
+            user.id,
+            user.email || "",
+            metadata.full_name || metadata.name || user.email?.split("@")[0],
+            metadata.picture || metadata.avatar_url
+          )
+
+          if (syncedUser) {
+            console.log(
+              syncedUser.isNewUser 
+                ? "New user profile created" 
+                : "Existing user profile loaded",
+              syncedUser
+            )
+            setEmail(syncedUser.email)
+          } else {
+            setEmail(user.email ?? null)
+          }
+          
           setStatus("success")
           return
         }

@@ -10,6 +10,7 @@ import {
 } from "@/app/api/authApi";
 import type { User } from "@supabase/supabase-js";
 import EditProfileModal from "./EditProfileModal";
+import { useAuth } from "@/context/AuthContext";
 
 interface HeaderProps {
   className?: string;
@@ -24,75 +25,28 @@ const NAV_LINKS = [
 
 const Header: React.FC<HeaderProps> = ({ className = "" }) => {
   const router = useRouter();
+  const { user: currentUser, profile, loading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [checkingSession, setCheckingSession] = useState(true);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   const avatarData = useMemo(() => {
     if (!currentUser) {
-      return { url: null as string | null, initial: "" };
+      return { url: null as string | null, initial: "", fullName: "" };
     }
 
-    const metadata = currentUser.user_metadata ?? {};
-    const rawUrl =
-      typeof metadata.avatar_url === "string"
-        ? metadata.avatar_url
-        : typeof metadata.picture === "string"
-        ? metadata.picture
-        : null;
-
+    // Use profile from database, fallback to OAuth metadata
+    const avatarUrl = profile?.avatar_url || currentUser.user_metadata?.picture || null;
+    const fullName = profile?.full_name || currentUser.user_metadata?.full_name || "";
     const emailInitial = currentUser.email?.charAt(0)?.toUpperCase();
-    const nameInitial =
-      typeof metadata.full_name === "string"
-        ? metadata.full_name.charAt(0).toUpperCase()
-        : undefined;
+    const nameInitial = fullName ? fullName.charAt(0).toUpperCase() : undefined;
 
     return {
-      url: rawUrl,
-      initial: emailInitial || nameInitial || "U",
+      url: avatarUrl,
+      initial: nameInitial || emailInitial || "U",
+      fullName,
     };
-  }, [currentUser]);
-
-  useEffect(() => {
-    let isMounted = true;
-    let unsubscribe: (() => void) | null = null;
-
-    const initSession = async () => {
-      try {
-        const { data } = await fetchSupabaseSession();
-        if (!isMounted) return;
-        setCurrentUser(data.session?.user ?? null);
-      } catch (error) {
-        console.error("Failed to retrieve session", error);
-      } finally {
-        if (isMounted) {
-          setCheckingSession(false);
-        }
-      }
-    };
-
-    try {
-      unsubscribe = subscribeToAuthChanges((_event, session) => {
-        if (!isMounted) {
-          return;
-        }
-        setCurrentUser(session?.user ?? null);
-        setAuthOpen(false);
-      });
-    } catch (error) {
-      console.error("Failed to subscribe to auth changes", error);
-      setCheckingSession(false);
-    }
-
-    initSession();
-
-    return () => {
-      isMounted = false;
-      unsubscribe?.();
-    };
-  }, []);
+  }, [currentUser, profile]);
 
   const toggleMenu = () => {
     setMenuOpen((prev) => !prev);
@@ -126,12 +80,9 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
     setIsEditProfileOpen(true);
   };
 
-  const handleProfileUpdate = (data: { name: string; avatarFile: File | null }) => {
-    // Here you would typically call an API to update the user profile
-    // For now, we just log the data
-    console.log("Profile update data:", data);
-    // You can implement the actual update logic here
-    // e.g., call supabase.auth.updateUser({ data: { full_name: data.name } })
+  const handleProfileUpdate = (data: { name: string; avatarUrl: string }) => {
+    console.log("Profile updated:", data);
+    // Profile will be auto-refreshed by AuthContext
   };
 
   return (
@@ -193,7 +144,7 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
               <button
                 type="button"
                 onClick={handleLoginClick}
-                disabled={checkingSession}
+                disabled={loading}
                 className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:bg-red-100/60"
               >
                 <LogIn className="h-4 w-4" />
@@ -230,7 +181,7 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
               </span>
               <div className="flex flex-col text-sm text-gray-700">
                 <span className="font-semibold text-gray-900">
-                  {currentUser.user_metadata?.full_name || "Người dùng"}
+                  {avatarData.fullName || currentUser.email?.split('@')[0] || "Người dùng"}
                 </span>
                 <span className="text-xs text-gray-500">
                   {currentUser.email}
