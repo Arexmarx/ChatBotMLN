@@ -19,9 +19,7 @@ export default function Header({ createNewChat: _createNewChat, sidebarCollapsed
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   const chatbots: ChatbotOption[] = [
-    { name: "GPT-5", icon: "🤖" },
-    { name: "Claude Sonnet 4", icon: "🎭" },
-    { name: "Gemini", icon: "💎" },
+    { name: "Quiz-Bot", icon: "🤖" },
     { name: "Assistant", icon: <Asterisk className="h-4 w-4" /> },
   ]
 

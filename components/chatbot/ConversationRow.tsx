@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useRef, useEffect, type MouseEvent } from "react"
-import { MoreHorizontal, Pin, Edit3, Trash2 } from "lucide-react"
+import { useState, useRef, useEffect, type MouseEvent, type KeyboardEvent } from "react"
+import { MoreHorizontal, Pin, Edit3, Trash2, X } from "lucide-react"
 import { cls, timeAgo } from "./utils"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -35,7 +35,10 @@ type ConversationRowProps = {
 
 export default function ConversationRow({ data, active = false, onSelect, onTogglePin, onDelete, onRename, showMeta = false }: ConversationRowProps) {
   const [showMenu, setShowMenu] = useState(false)
+  const [showRenameModal, setShowRenameModal] = useState(false)
+  const [renameValue, setRenameValue] = useState(data.title)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const renameInputRef = useRef<HTMLInputElement | null>(null)
   const count = Array.isArray(data.messages) ? data.messages.length : data.messageCount
 
   useEffect(() => {
@@ -54,6 +57,13 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
     }
   }, [showMenu])
 
+  useEffect(() => {
+    if (showRenameModal && renameInputRef.current) {
+      renameInputRef.current.focus()
+      renameInputRef.current.select()
+    }
+  }, [showRenameModal])
+
   const handlePin = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     onTogglePin?.()
@@ -62,11 +72,25 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
 
   const handleRename = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
-    const newName = prompt(`Rename chat "${data.title}" to:`, data.title)
-    if (newName && newName.trim() && newName !== data.title) {
-      onRename?.(data.id, newName.trim())
-    }
+    setRenameValue(data.title)
+    setShowRenameModal(true)
     setShowMenu(false)
+  }
+
+  const confirmRename = () => {
+    const trimmed = renameValue.trim()
+    if (trimmed && trimmed !== data.title) {
+      onRename?.(data.id, trimmed)
+    }
+    setShowRenameModal(false)
+  }
+
+  const handleRenameKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      confirmRename()
+    } else if (e.key === "Escape") {
+      setShowRenameModal(false)
+    }
   }
 
   const handleDelete = (e: MouseEvent<HTMLButtonElement>) => {
@@ -107,13 +131,13 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
         </div>
       </div>
 
-      <div className="absolute right-2 top-1/2 -translate-y-1/2" ref={menuRef}>
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 z-[150]" ref={menuRef}>
         <button
           onClick={(e) => {
             e.stopPropagation()
             setShowMenu(!showMenu)
           }}
-          className="rounded-md p-1 text-zinc-500 opacity-0 transition group-hover:opacity-100 hover:bg-zinc-200/50 dark:text-zinc-300 dark:hover:bg-zinc-700/60"
+          className="rounded-md p-1 text-zinc-500 opacity-0 transition group-hover:opacity-100 hover:bg-zinc-200/50 dark:text-zinc-300 dark:hover:bg-zinc-700/60 active:opacity-100"
           aria-label="Chat options"
         >
           <MoreHorizontal className="h-4 w-4" />
@@ -125,7 +149,7 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 z-[100]"
+              className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-zinc-200 bg-white py-1 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 z-[200]"
             >
               <button
                 onClick={handlePin}
@@ -165,6 +189,63 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
       <div className="pointer-events-none absolute left-[calc(100%+6px)] top-1 hidden w-64 rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-700 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 md:group-hover:block">
         <div className="line-clamp-6 whitespace-pre-wrap">{data.preview}</div>
       </div>
+
+      {/* Rename Modal */}
+      <AnimatePresence>
+        {showRenameModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowRenameModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowRenameModal(false)}
+                className="absolute right-4 top-4 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                Rename Conversation
+              </h3>
+
+              <input
+                ref={renameInputRef}
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={handleRenameKeyDown}
+                className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-blue-400"
+                placeholder="Enter new name..."
+              />
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowRenameModal(false)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRename}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                >
+                  Rename
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
