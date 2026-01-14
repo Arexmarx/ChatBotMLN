@@ -11,6 +11,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import EditProfileModal from "./EditProfileModal";
 import { useAuth } from "@/context/AuthContext";
+import AuthButton from "@/components/common/AuthButton";
 
 interface HeaderProps {
   className?: string;
@@ -58,15 +59,11 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
     setMenuOpen(false);
   };
 
-  const handleLoginClick = () => {
-    router.push("/auth");
-  };
-
   const handleSignOut = async () => {
     try {
       const { error } = await signOutUser();
       if (error) {
-        console.error("Google logout failed", error);
+        console.error("Sign out failed", error);
         return;
       }
       setAuthOpen(false);
@@ -119,37 +116,31 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
 
           <div className="flex items-center gap-3">
             {currentUser ? (
-              <button
-                type="button"
-                onClick={toggleAuth}
-                className="flex items-center gap-2 rounded-full border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-red-50"
-              >
-                <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-red-100 text-red-600">
-                  {avatarData.url ? (
-                    <img
-                      src={avatarData.url}
-                      alt={currentUser.email ?? "Người dùng"}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    avatarData.initial
-                  )}
-                </span>
-                <span className="hidden max-w-[160px] truncate text-left text-xs font-semibold uppercase tracking-wide text-gray-500 md:block">
-                  {currentUser.email ?? "Đã đăng nhập"}
-                </span>
-                <ChevronDown className="h-4 w-4 text-red-500" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={toggleAuth}
+                  className="flex items-center gap-2 rounded-full border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-red-50"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-red-100 text-red-600">
+                    {avatarData.url ? (
+                      <img
+                        src={avatarData.url}
+                        alt={currentUser.email ?? "Người dùng"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      avatarData.initial
+                    )}
+                  </span>
+                  <span className="hidden max-w-[160px] truncate text-left text-xs font-semibold uppercase tracking-wide text-gray-500 md:block">
+                    {currentUser.email ?? "Đã đăng nhập"}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-red-500" />
+                </button>
+              </>
             ) : (
-              <button
-                type="button"
-                onClick={handleLoginClick}
-                disabled={loading}
-                className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:bg-red-100/60"
-              >
-                <LogIn className="h-4 w-4" />
-                Đăng nhập
-              </button>
+              <AuthButton showAvatar={false} />
             )}
             <button
               type="button"
