@@ -8,6 +8,7 @@ import Header from "./Header"
 import ChatPane from "./ChatPane"
 import GhostIconButton from "./GhostIconButton"
 import ThemeToggle from "./ThemeToggle"
+import { CHAT_THEMES, CHAT_THEME_STORAGE_KEY, isChatTheme, type ChatThemeKey } from "./themePresets"
 import { fetchSupabaseSession, subscribeToAuthChanges } from "@/app/api/authApi"
 import type { User } from "@supabase/supabase-js"
 import {
@@ -59,21 +60,49 @@ type FolderItem = {
 
 export default function AIAssistantUI() {
   const router = useRouter()
-  const [theme, setTheme] = useState(() => {
-    const saved = typeof window !== "undefined" && localStorage.getItem("theme")
-    if (saved) return saved
-    if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
-      return "dark"
-    return "light"
+  const [theme, setTheme] = useState<ChatThemeKey>(() => {
+    if (typeof window === "undefined") return "classic"
+    // Check new storage key first
+    const saved = localStorage.getItem(CHAT_THEME_STORAGE_KEY)
+    if (isChatTheme(saved)) return saved
+    // Fall back to legacy key
+    const legacy = localStorage.getItem("theme")
+    if (legacy === "dark") return "midnight"
+    if (legacy === "light") return "classic"
+    // Use system preference
+    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) return "midnight"
+    return "classic"
   })
 
   useEffect(() => {
     try {
-      if (theme === "dark") document.documentElement.classList.add("dark")
-      else document.documentElement.classList.remove("dark")
-      document.documentElement.setAttribute("data-theme", theme)
-      document.documentElement.style.colorScheme = theme
-      localStorage.setItem("theme", theme)
+      const config = CHAT_THEMES[theme] ?? CHAT_THEMES.classic
+      const root = document.documentElement
+
+      root.classList.toggle("dark", Boolean(config.isDark))
+      root.setAttribute("data-chat-theme", config.key)
+      root.style.colorScheme = config.isDark ? "dark" : "light"
+
+      const c = config.colors
+      root.style.setProperty("--chat-bg", c.background)
+      root.style.setProperty("--chat-background", c.background)
+      root.style.setProperty("--chat-surface", c.surface)
+      root.style.setProperty("--chat-text", c.text)
+      root.style.setProperty("--chat-header-text", c.headerText ?? c.text)
+      root.style.setProperty("--chat-sidebar-text", c.sidebarText ?? c.text)
+      root.style.setProperty("--chat-input-text", c.inputText ?? c.text)
+      root.style.setProperty("--chat-muted", c.muted)
+      root.style.setProperty("--chat-border", c.border)
+      root.style.setProperty("--chat-accent", c.accent)
+      root.style.setProperty("--chat-accent-contrast", c.accentText)
+      root.style.setProperty("--chat-user-bubble", c.bubbleUser)
+      root.style.setProperty("--chat-assistant-bubble", c.bubbleAssistant)
+      root.style.setProperty("--chat-user-text", c.bubbleUserText)
+      root.style.setProperty("--chat-assistant-text", c.bubbleAssistantText)
+
+      localStorage.setItem(CHAT_THEME_STORAGE_KEY, config.key)
+      // Clear legacy theme key to prevent conflicts
+      localStorage.removeItem("theme")
     } catch {}
   }, [theme])
 
@@ -82,8 +111,8 @@ export default function AIAssistantUI() {
       const media = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)")
       if (!media) return
       const listener = (e: MediaQueryListEvent) => {
-        const saved = localStorage.getItem("theme")
-        if (!saved) setTheme(e.matches ? "dark" : "light")
+        const saved = localStorage.getItem(CHAT_THEME_STORAGE_KEY)
+        if (!isChatTheme(saved)) setTheme(e.matches ? "midnight" : "classic")
       }
       media.addEventListener("change", listener)
       return () => media.removeEventListener("change", listener)
@@ -566,9 +595,21 @@ export default function AIAssistantUI() {
     )
   }
 
+  const activeTheme = CHAT_THEMES[theme] ?? CHAT_THEMES.classic
+
   return (
-    <div className="fixed inset-0 h-screen w-screen bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <div className="md:hidden sticky top-0 z-40 flex items-center gap-2 border-b border-zinc-200/60 bg-white/80 px-3 py-2 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
+    <div
+      className="fixed inset-0 h-screen w-screen"
+      style={{ backgroundColor: activeTheme.colors.background, color: activeTheme.colors.text }}
+    >
+      <div
+        className="md:hidden sticky top-0 z-40 flex items-center gap-2 border-b px-3 py-2 backdrop-blur"
+        style={{
+          backgroundColor: activeTheme.colors.surface,
+          color: activeTheme.colors.text,
+          borderColor: activeTheme.colors.border,
+        }}
+      >
         <div className="ml-1 flex items-center gap-2 text-sm font-semibold tracking-tight">
           <span className="inline-flex h-4 w-4 items-center justify-center">✱</span> AI Assistant
         </div>
@@ -582,7 +623,7 @@ export default function AIAssistantUI() {
           <GhostIconButton label="More">
             <MoreHorizontal className="h-4 w-4" />
           </GhostIconButton>
-          <ThemeToggle theme={theme} setTheme={setTheme} />
+          <ThemeToggle theme={theme} onThemeChange={setTheme} size="compact" />
         </div>
       </div>
 
@@ -618,8 +659,17 @@ export default function AIAssistantUI() {
           onUseTemplate={handleUseTemplate}
         />
 
-        <main className="relative flex min-w-0 flex-1 flex-col">
-          <Header createNewChat={createNewChat} sidebarCollapsed={sidebarCollapsed} setSidebarOpen={setSidebarOpen} />
+        <main
+          className="relative flex min-w-0 flex-1 flex-col"
+          style={{ backgroundColor: activeTheme.colors.surface, color: activeTheme.colors.text }}
+        >
+          <Header
+            createNewChat={createNewChat}
+            sidebarCollapsed={sidebarCollapsed}
+            setSidebarOpen={setSidebarOpen}
+            theme={theme}
+            onThemeChange={setTheme}
+          />
           <ChatPane
             ref={composerRef}
             conversation={selected}
@@ -640,6 +690,23 @@ export default function AIAssistantUI() {
             }}
             isThinking={isThinking && thinkingConvId === selected?.id}
             onPauseThinking={pauseThinking}
+            userAvatar={
+              typeof currentUser?.user_metadata?.avatar_url === "string"
+                ? currentUser.user_metadata.avatar_url
+                : typeof currentUser?.user_metadata?.picture === "string"
+                ? currentUser.user_metadata.picture
+                : null
+            }
+            userInitials={
+              currentUser?.user_metadata?.full_name
+                ?.split(" ")
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((part: string) => part.charAt(0).toUpperCase())
+                .join("") ||
+              currentUser?.email?.charAt(0)?.toUpperCase() ||
+              "U"
+            }
           />
         </main>
       </div>

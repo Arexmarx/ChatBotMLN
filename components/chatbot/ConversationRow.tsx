@@ -149,11 +149,16 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-zinc-200 bg-white py-1 shadow-xl dark:border-zinc-800 dark:bg-zinc-900 z-[200]"
+              className="absolute right-0 top-full mt-1 w-36 rounded-lg border py-1 shadow-xl z-[200]"
+              style={{
+                backgroundColor: "var(--chat-surface)",
+                borderColor: "var(--chat-border)",
+              }}
             >
               <button
                 onClick={handlePin}
-                className="w-full px-3 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
+                className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 transition-colors"
+                style={{ color: "var(--chat-text)" }}
               >
                 {data.pinned ? (
                   <>
@@ -169,14 +174,16 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
               </button>
               <button
                 onClick={handleRename}
-                className="w-full px-3 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
+                className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 transition-colors"
+                style={{ color: "var(--chat-text)" }}
               >
                 <Edit3 className="h-3 w-3" />
                 Rename
               </button>
               <button
                 onClick={handleDelete}
-                className="w-full px-3 py-1.5 text-left text-xs text-red-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
+                className="w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 transition-colors"
+                style={{ color: "#ef4444" }}
               >
                 <Trash2 className="h-3 w-3" />
                 Delete
@@ -186,7 +193,7 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
         </AnimatePresence>
       </div>
 
-      <div className="pointer-events-none absolute left-[calc(100%+6px)] top-1 hidden w-64 rounded-xl border border-zinc-200 bg-white p-3 text-xs text-zinc-700 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 md:group-hover:block">
+      <div className="pointer-events-none absolute left-[calc(100%+6px)] top-1 hidden w-64 rounded-xl border p-3 text-xs shadow-lg md:group-hover:block" style={{ borderColor: "var(--chat-border)", backgroundColor: "var(--chat-surface)", color: "var(--chat-text)" }}>
         <div className="line-clamp-6 whitespace-pre-wrap">{data.preview}</div>
       </div>
 
@@ -204,17 +211,25 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900"
+              className="relative w-full max-w-md rounded-xl border p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: "var(--chat-surface)",
+                borderColor: "var(--chat-border)",
+              }}
             >
               <button
                 onClick={() => setShowRenameModal(false)}
-                className="absolute right-4 top-4 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                className="absolute right-4 top-4 rounded-lg p-1 transition-colors"
+                style={{
+                  color: "var(--chat-muted)",
+                  backgroundColor: "transparent",
+                }}
               >
                 <X className="h-4 w-4" />
               </button>
 
-              <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              <h3 className="mb-4 text-lg font-semibold" style={{ color: "var(--chat-text)" }}>
                 Rename Conversation
               </h3>
 
@@ -224,20 +239,34 @@ export default function ConversationRow({ data, active = false, onSelect, onTogg
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
                 onKeyDown={handleRenameKeyDown}
-                className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-blue-400"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm placeholder-text transition-colors outline-none focus:ring-2"
+                style={{
+                  borderColor: "var(--chat-border)",
+                  backgroundColor: "var(--chat-background)",
+                  color: "var(--chat-text)",
+                  "--placeholder-color": "var(--chat-muted)",
+                } as any}
                 placeholder="Enter new name..."
               />
 
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   onClick={() => setShowRenameModal(false)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                  style={{
+                    color: "var(--chat-text)",
+                    backgroundColor: "transparent",
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmRename}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                  className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                  style={{
+                    backgroundColor: "var(--chat-accent)",
+                    color: "var(--chat-accent-contrast)",
+                  }}
                 >
                   Rename
                 </button>

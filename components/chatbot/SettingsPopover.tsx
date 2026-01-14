@@ -13,19 +13,39 @@ export default function SettingsPopover({ children }: SettingsPopoverProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="start" side="top">
+      <PopoverContent
+        className="w-72 p-0"
+        align="start"
+        side="top"
+        style={{
+          backgroundColor: "var(--chat-surface)",
+          borderColor: "var(--chat-border)",
+        }}
+      >
         <div className="p-3">
-          <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">user@example.com</div>
+          <div className="text-sm mb-3" style={{ color: "var(--chat-muted)" }}>
+            user@example.com
+          </div>
 
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 mb-3">
-            <div className="flex items-center justify-center h-8 w-8 rounded-md bg-zinc-200 dark:bg-zinc-700 text-xs font-bold">
+          <div
+            className="flex items-center gap-3 p-3 rounded-lg mb-3"
+            style={{ backgroundColor: "var(--chat-background)", borderColor: "var(--chat-border)" }}
+          >
+            <div
+              className="flex items-center justify-center h-8 w-8 rounded-md text-xs font-bold"
+              style={{ backgroundColor: "var(--chat-accent)", color: "var(--chat-accent-contrast)" }}
+            >
               ID
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Personal</div>
-              <div className="text-xs text-zinc-500 dark:text-zinc-400">Pro plan</div>
+              <div className="text-sm font-medium" style={{ color: "var(--chat-text)" }}>
+                Personal
+              </div>
+              <div className="text-xs" style={{ color: "var(--chat-muted)" }}>
+                Pro plan
+              </div>
             </div>
-            <div className="text-blue-500">
+            <div style={{ color: "var(--chat-accent)" }}>
               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
@@ -37,41 +57,59 @@ export default function SettingsPopover({ children }: SettingsPopoverProps) {
           </div>
 
           <div className="space-y-0.5">
-            <button className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-              <Settings className="h-4 w-4 text-zinc-500" />
+            <button
+              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left rounded-lg transition-colors"
+              style={{ color: "var(--chat-text)" }}
+            >
+              <Settings className="h-4 w-4" style={{ color: "var(--chat-muted)" }} />
               <span>Settings</span>
             </button>
 
-            <button className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-              <Globe className="h-4 w-4 text-zinc-500" />
+            <button
+              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left rounded-lg transition-colors"
+              style={{ color: "var(--chat-text)" }}
+            >
+              <Globe className="h-4 w-4" style={{ color: "var(--chat-muted)" }} />
               <span>Language</span>
-              <ChevronRight className="h-4 w-4 ml-auto text-zinc-400" />
+              <ChevronRight className="h-4 w-4 ml-auto" style={{ color: "var(--chat-muted)" }} />
             </button>
 
-            <button className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-              <HelpCircle className="h-4 w-4 text-zinc-500" />
+            <button
+              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left rounded-lg transition-colors"
+              style={{ color: "var(--chat-text)" }}
+            >
+              <HelpCircle className="h-4 w-4" style={{ color: "var(--chat-muted)" }} />
               <span>Get help</span>
             </button>
           </div>
 
-          <div className="my-2 border-t border-zinc-200 dark:border-zinc-700" />
+          <div className="my-2" style={{ borderTop: "1px solid var(--chat-border)" }} />
 
           <div className="space-y-0.5">
-            <button className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-              <Crown className="h-4 w-4 text-zinc-500" />
+            <button
+              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left rounded-lg transition-colors"
+              style={{ color: "var(--chat-text)" }}
+            >
+              <Crown className="h-4 w-4" style={{ color: "var(--chat-muted)" }} />
               <span>Upgrade plan</span>
             </button>
 
-            <button className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-              <BookOpen className="h-4 w-4 text-zinc-500" />
+            <button
+              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left rounded-lg transition-colors"
+              style={{ color: "var(--chat-text)" }}
+            >
+              <BookOpen className="h-4 w-4" style={{ color: "var(--chat-muted)" }} />
               <span>Learn more</span>
-              <ChevronRight className="h-4 w-4 ml-auto text-zinc-400" />
+              <ChevronRight className="h-4 w-4 ml-auto" style={{ color: "var(--chat-muted)" }} />
             </button>
           </div>
 
-          <div className="my-2 border-t border-zinc-200 dark:border-zinc-700" />
+          <div className="my-2" style={{ borderTop: "1px solid var(--chat-border)" }} />
 
-          <button className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-red-600 dark:text-red-400">
+          <button
+            className="flex items-center gap-3 w-full px-3 py-2.5 text-sm text-left rounded-lg transition-colors"
+            style={{ color: "#ef4444" }}
+          >
             <LogOut className="h-4 w-4" />
             <span>Log out</span>
           </button>

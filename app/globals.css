@@ -18,6 +18,20 @@
   
   --background: #FFFDF5;
   --foreground: #1F2937;
+
+  /* Chat theme tokens */
+  --chat-bg: var(--background);
+  --chat-background: var(--background);
+  --chat-surface: #ffffff;
+  --chat-text: var(--foreground);
+  --chat-muted: #4B5563;
+  --chat-border: #e2e8f0;
+  --chat-accent: #2563eb;
+  --chat-accent-contrast: #eff6ff;
+  --chat-user-bubble: #e0f2fe;
+  --chat-assistant-bubble: #f8fafc;
+  --chat-user-text: #0c4a6e;
+  --chat-assistant-text: #0f172a;
   
   /* Font families - Vietnamese supported */
   --font-serif: 'Spectral', 'Noto Serif', Georgia, serif;
@@ -39,8 +53,8 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--chat-bg);
+  color: var(--chat-text);
   font-family: var(--font-sans);
 }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react"
+import { useMemo, useState, type Dispatch, type MutableRefObject, type SetStateAction, type CSSProperties } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   PanelLeftClose,
@@ -19,6 +19,7 @@ import ConversationRow from "./ConversationRow"
 import FolderRow from "./FolderRow"
 import TemplateRow from "./TemplateRow"
 import ThemeToggle from "./ThemeToggle"
+import type { ChatThemeKey } from "./themePresets"
 import CreateFolderModal from "./CreateFolderModal"
 import CreateTemplateModal from "./CreateTemplateModal"
 import SearchModal from "./SearchModal"
@@ -71,8 +72,8 @@ type CollapsedState = {
 type SidebarProps = {
   open: boolean
   onClose: () => void
-  theme: string
-  setTheme: Dispatch<SetStateAction<string>>
+  theme: ChatThemeKey
+  setTheme: Dispatch<SetStateAction<ChatThemeKey>>
   collapsed: CollapsedState
   setCollapsed: Dispatch<SetStateAction<CollapsedState>>
   conversations: ConversationItem[]
@@ -274,12 +275,18 @@ export default function Sidebar({
           initial={{ width: 320 }}
           animate={{ width: 64 }}
           transition={{ type: "spring", stiffness: 260, damping: 28 }}
-          className="z-50 flex h-full shrink-0 flex-col border-r border-zinc-200/60 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+          className="z-50 flex h-full shrink-0 flex-col border-r"
+          style={{
+            borderColor: "var(--chat-border)",
+            backgroundColor: "var(--chat-surface)",
+            color: "var(--chat-text)",
+          }}
         >
-          <div className="flex items-center justify-center border-b border-zinc-200/60 px-3 py-3 dark:border-zinc-800">
+          <div className="flex items-center justify-center border-b px-3 py-3" style={{ borderColor: "var(--chat-border)" }}>
             <button
               onClick={() => updateSidebarCollapsed(false)}
-              className="rounded-xl p-2 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800"
+              className="rounded-xl p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+              style={{ color: "var(--chat-text)" }}
               aria-label="Open sidebar"
               title="Open sidebar"
             >
@@ -290,7 +297,8 @@ export default function Sidebar({
           <div className="flex flex-1 flex-col items-center gap-2 pt-4">
             <button
               onClick={handleNewChatClick}
-              className="rounded-xl p-2.5 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800 transition-colors"
+              className="rounded-xl p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+              style={{ color: "var(--chat-text)" }}
               title="New Chat"
             >
               <Plus className="h-5 w-5" />
@@ -298,7 +306,8 @@ export default function Sidebar({
 
             <button
               onClick={handleSearchClick}
-              className="rounded-xl p-2.5 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800 transition-colors"
+              className="rounded-xl p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+              style={{ color: "var(--chat-text)" }}
               title="Search chats"
             >
               <SearchIcon className="h-5 w-5" />
@@ -306,7 +315,8 @@ export default function Sidebar({
 
             <button
               onClick={handleFoldersClick}
-              className="rounded-xl p-2.5 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800 transition-colors"
+              className="rounded-xl p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+              style={{ color: "var(--chat-text)" }}
               title="Folders"
             >
               <FolderIcon className="h-5 w-5" />
@@ -316,7 +326,8 @@ export default function Sidebar({
           <div className="mt-auto flex flex-col items-center gap-2 pb-4">
             <SettingsPopover>
               <button
-                className="rounded-xl p-2.5 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800 transition-colors"
+                className="rounded-xl p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+                style={{ color: "var(--chat-text)" }}
                 title="Settings"
               >
                 <Settings className="h-5 w-5" />
@@ -361,22 +372,27 @@ export default function Sidebar({
             animate={{ x: open ? 0 : 0 }}
             exit={{ x: -340 }}
             transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            className={cls(
-              "z-50 flex h-full w-80 shrink-0 flex-col border-r border-zinc-200/60 bg-white dark:border-zinc-800 dark:bg-zinc-900",
-              "fixed inset-y-0 left-0 md:static md:translate-x-0",
-            )}
+            className="z-50 flex h-full w-80 shrink-0 flex-col fixed inset-y-0 left-0 md:static md:translate-x-0 border-r"
+            style={{
+              borderColor: "var(--chat-border)",
+              backgroundColor: "var(--chat-surface)",
+              color: "var(--chat-sidebar-text, var(--chat-text))",
+            }}
           >
-            <div className="flex items-center gap-2 border-b border-zinc-200/60 px-3 py-3 dark:border-zinc-800">
+            <div className="flex items-center gap-2 border-b px-3 py-3" style={{ borderColor: "var(--chat-border)" }}>
               <div className="flex items-center gap-2">
-                <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-sm dark:from-zinc-200 dark:to-zinc-300 dark:text-zinc-900">
+                <div className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-sm">
                   <Asterisk className="h-4 w-4" />
                 </div>
-                <div className="text-sm font-semibold tracking-tight">AI Assistant</div>
+                <div className="text-sm font-semibold tracking-tight" style={{ color: "var(--chat-sidebar-text, var(--chat-text))" }}>
+                  AI Assistant
+                </div>
               </div>
               <div className="ml-auto flex items-center gap-1">
                 <button
                   onClick={() => updateSidebarCollapsed(true)}
-                  className="hidden md:block rounded-xl p-2 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800"
+                  className="hidden md:block rounded-xl p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+                  style={{ color: "var(--chat-sidebar-text, var(--chat-text))" }}
                   aria-label="Close sidebar"
                   title="Close sidebar"
                 >
@@ -385,7 +401,8 @@ export default function Sidebar({
 
                 <button
                   onClick={onClose}
-                  className="md:hidden rounded-xl p-2 hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800"
+                  className="md:hidden rounded-xl p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+                  style={{ color: "var(--chat-sidebar-text, var(--chat-text))" }}
                   aria-label="Close sidebar"
                 >
                   <PanelLeftClose className="h-5 w-5" />
@@ -398,7 +415,10 @@ export default function Sidebar({
                 Search conversations
               </label>
               <div className="relative">
-                <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                <SearchIcon
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
+                  style={{ color: "var(--chat-muted)" }}
+                />
                 <input
                   id="search"
                   ref={searchRef}
@@ -408,7 +428,12 @@ export default function Sidebar({
                   placeholder="Search…"
                   onClick={() => setShowSearchModal(true)}
                   onFocus={() => setShowSearchModal(true)}
-                  className="w-full rounded-full border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm outline-none ring-0 placeholder:text-zinc-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 dark:border-zinc-800 dark:bg-zinc-950/50"
+                  className="w-full rounded-full border py-2 pl-9 pr-3 text-sm outline-none ring-0 transition-colors placeholder:text-[color:var(--chat-muted)]"
+                  style={{
+                    borderColor: "var(--chat-border)",
+                    backgroundColor: "var(--chat-surface)",
+                    color: "var(--chat-sidebar-text, var(--chat-text))",
+                  } as CSSProperties}
                 />
               </div>
             </div>
@@ -416,7 +441,8 @@ export default function Sidebar({
             <div className="px-3 pt-3">
               <button
                 onClick={createNewChat}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-white dark:text-zinc-900"
+                className="flex w-full items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                style={{ backgroundColor: "var(--chat-accent)", color: "var(--chat-accent-contrast)" }}
                 title="New Chat (⌘N)"
               >
                 <Plus className="h-4 w-4" /> Start New Chat
@@ -431,7 +457,10 @@ export default function Sidebar({
                 onToggle={() => setCollapsed((prev) => ({ ...prev, pinned: !prev.pinned }))}
               >
                 {pinned.length === 0 ? (
-                  <div className="select-none rounded-lg border border-dashed border-zinc-200 px-3 py-3 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                  <div
+                    className="select-none rounded-lg border border-dashed px-3 py-3 text-center text-xs"
+                    style={{ borderColor: "var(--chat-border)", color: "var(--chat-muted)" }}
+                  >
                     Pin important threads for quick access.
                   </div>
                 ) : (
@@ -455,7 +484,10 @@ export default function Sidebar({
                 onToggle={() => setCollapsed((prev) => ({ ...prev, recent: !prev.recent }))}
               >
                 {recent.length === 0 ? (
-                  <div className="select-none rounded-lg border border-dashed border-zinc-200 px-3 py-3 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                  <div
+                    className="select-none rounded-lg border border-dashed px-3 py-3 text-center text-xs"
+                    style={{ borderColor: "var(--chat-border)", color: "var(--chat-muted)" }}
+                  >
                     No conversations yet. Start a new one!
                   </div>
                 ) : (
@@ -482,7 +514,8 @@ export default function Sidebar({
                 <div className="-mx-1">
                   <button
                     onClick={() => setShowCreateFolderModal(true)}
-                    className="mb-2 inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="mb-2 inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors"
+                    style={{ color: "var(--chat-sidebar-text, var(--chat-text))" }}
                   >
                     <Plus className="h-4 w-4" /> Create folder
                   </button>
@@ -515,7 +548,8 @@ export default function Sidebar({
                       setEditingTemplate(null)
                       setShowCreateTemplateModal(true)
                     }}
-                    className="mb-2 inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="mb-2 inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors"
+                    style={{ color: "var(--chat-sidebar-text, var(--chat-text))" }}
                   >
                     <Plus className="h-4 w-4" /> Create template
                   </button>
@@ -532,7 +566,10 @@ export default function Sidebar({
                   ))}
 
                   {templateList.length === 0 && (
-                    <div className="select-none rounded-lg border border-dashed border-zinc-200 px-3 py-3 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                    <div
+                      className="select-none rounded-lg border border-dashed px-3 py-3 text-center text-xs"
+                      style={{ borderColor: "var(--chat-border)", color: "var(--chat-muted)" }}
+                    >
                       No templates yet. Create your first prompt template.
                     </div>
                   )}
@@ -540,19 +577,28 @@ export default function Sidebar({
               </SidebarSection>
             </nav>
 
-            <div className="mt-auto border-t border-zinc-200/60 px-3 py-3 dark:border-zinc-800">
+            <div className="mt-auto border-t px-3 py-3" style={{ borderColor: "var(--chat-border)" }}>
               <div className="flex items-center gap-2">
                 <SettingsPopover>
-                  <button className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-zinc-800">
+                  <button
+                    className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
+                    style={{ color: "var(--chat-sidebar-text, var(--chat-text))" }}
+                  >
                     <Settings className="h-4 w-4" /> Settings
                   </button>
                 </SettingsPopover>
                 <div className="ml-auto">
-                  <ThemeToggle theme={theme} setTheme={setTheme} />
+                  <ThemeToggle theme={theme} onThemeChange={setTheme} size="compact" />
                 </div>
               </div>
-              <div className="mt-2 flex items-center gap-2 rounded-xl bg-zinc-50 p-2 dark:bg-zinc-800/60">
-                <div className="grid h-8 w-8 place-items-center overflow-hidden rounded-full bg-zinc-900 text-xs font-bold text-white dark:bg-white dark:text-zinc-900">
+              <div
+                className="mt-2 flex items-center gap-2 rounded-xl p-2"
+                style={{ backgroundColor: "var(--chat-surface)", border: "1px solid var(--chat-border)" }}
+              >
+                <div
+                  className="grid h-8 w-8 place-items-center overflow-hidden rounded-full text-xs font-bold"
+                  style={{ backgroundColor: "var(--chat-accent)", color: "var(--chat-accent-contrast)" }}
+                >
                   {avatarUrl ? (
                     <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
                   ) : (
@@ -560,8 +606,12 @@ export default function Sidebar({
                   )}
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{displayName}</div>
-                  <div className="truncate text-xs text-zinc-500 dark:text-zinc-400">{displaySubtitle}</div>
+                  <div className="truncate text-sm font-medium" style={{ color: "var(--chat-sidebar-text, var(--chat-text))" }}>
+                    {displayName}
+                  </div>
+                  <div className="truncate text-xs" style={{ color: "var(--chat-muted)" }}>
+                    {displaySubtitle}
+                  </div>
                 </div>
               </div>
             </div>
