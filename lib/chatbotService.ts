@@ -444,3 +444,128 @@ export async function deleteTemplate(templateId: string): Promise<boolean> {
   
   return true
 }
+
+// ============================================
+// QUIZ (LocalStorage)
+// ============================================
+
+export type Quiz = {
+  id: string
+  userId: string
+  title: string
+  questions: QuizQuestion[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type QuizQuestion = {
+  id: number
+  question: string
+  options: string[]
+  correctAnswer: number
+  explanation: string
+}
+
+const QUIZ_STORAGE_KEY = "chatbot_quizzes"
+
+/**
+ * Get all quizzes for a user from localStorage
+ */
+export function getQuizzesFromLocalStorage(userId: string): Quiz[] {
+  if (typeof window === "undefined") return []
+  
+  const allQuizzes = localStorage.getItem(QUIZ_STORAGE_KEY)
+  if (!allQuizzes) return []
+  
+  try {
+    const quizzes: Quiz[] = JSON.parse(allQuizzes)
+    return quizzes.filter(q => q.userId === userId)
+  } catch (error) {
+    console.error("Error parsing quizzes from localStorage:", error)
+    return []
+  }
+}
+
+/**
+ * Save a new quiz to localStorage
+ */
+export function saveQuizToLocalStorage(
+  userId: string,
+  title: string,
+  questions: QuizQuestion[]
+): Quiz {
+  if (typeof window === "undefined") throw new Error("localStorage not available")
+  
+  const allQuizzes = localStorage.getItem(QUIZ_STORAGE_KEY)
+  let quizzes: Quiz[] = []
+  
+  if (allQuizzes) {
+    try {
+      quizzes = JSON.parse(allQuizzes)
+    } catch (error) {
+      console.error("Error parsing existing quizzes:", error)
+    }
+  }
+  
+  const newQuiz: Quiz = {
+    id: `quiz_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    userId,
+    title,
+    questions,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  
+  quizzes.push(newQuiz)
+  localStorage.setItem(QUIZ_STORAGE_KEY, JSON.stringify(quizzes))
+  
+  return newQuiz
+}
+
+/**
+ * Rename a quiz
+ */
+export function renameQuizInLocalStorage(quizId: string, newTitle: string): boolean {
+  if (typeof window === "undefined") return false
+  
+  const allQuizzes = localStorage.getItem(QUIZ_STORAGE_KEY)
+  if (!allQuizzes) return false
+  
+  try {
+    const quizzes: Quiz[] = JSON.parse(allQuizzes)
+    const quiz = quizzes.find(q => q.id === quizId)
+    
+    if (quiz) {
+      quiz.title = newTitle
+      quiz.updatedAt = new Date().toISOString()
+      localStorage.setItem(QUIZ_STORAGE_KEY, JSON.stringify(quizzes))
+      return true
+    }
+  } catch (error) {
+    console.error("Error renaming quiz:", error)
+  }
+  
+  return false
+}
+
+/**
+ * Delete a quiz
+ */
+export function deleteQuizFromLocalStorage(quizId: string): boolean {
+  if (typeof window === "undefined") return false
+  
+  const allQuizzes = localStorage.getItem(QUIZ_STORAGE_KEY)
+  if (!allQuizzes) return false
+  
+  try {
+    const quizzes: Quiz[] = JSON.parse(allQuizzes)
+    const filtered = quizzes.filter(q => q.id !== quizId)
+    localStorage.setItem(QUIZ_STORAGE_KEY, JSON.stringify(filtered))
+    return true
+  } catch (error) {
+    console.error("Error deleting quiz:", error)
+  }
+  
+  return false
+}
+

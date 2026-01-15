@@ -11,7 +11,7 @@ export type ComposerHandle = {
 }
 
 type ComposerProps = {
-  onSend?: (value: string) => void | Promise<void>
+  onSend?: (value: string, mode?: "assistant" | "quiz") => void | Promise<void>
   busy?: boolean
 }
 
@@ -19,6 +19,7 @@ const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer({ o
   const [value, setValue] = useState<string>("")
   const [sending, setSending] = useState(false)
   const [lineCount, setLineCount] = useState(1)
+  const [currentMode, setCurrentMode] = useState<"assistant" | "quiz">("assistant")
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
@@ -68,7 +69,11 @@ const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer({ o
     if (!value.trim() || sending) return
     setSending(true)
     try {
-      await onSend?.(value)
+      if (currentMode === "quiz") {
+        await onSend?.(value, "quiz")
+      } else {
+        await onSend?.(value)
+      }
       setValue("")
       inputRef.current?.focus()
     } finally {
@@ -108,7 +113,7 @@ const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer({ o
 
         {/* Bottom toolbar: + on left, mic/send on right */}
         <div className="flex items-center justify-between px-3 pb-3">
-          <ComposerActionsPopover>
+          <ComposerActionsPopover currentMode={currentMode} onModeChange={setCurrentMode}>
             <button
               className="inline-flex shrink-0 items-center justify-center rounded-full p-2 transition-colors"
               style={{ color: "var(--chat-muted)" }}
@@ -117,6 +122,11 @@ const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer({ o
               <Plus className="h-5 w-5" />
             </button>
           </ComposerActionsPopover>
+
+          {/* Mode indicator */}
+          <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--chat-muted)" }}>
+            {currentMode === "assistant" ? "💬 Assistant" : "📚 Quiz"}
+          </div>
 
           <div className="flex items-center gap-1 shrink-0">
             <button

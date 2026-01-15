@@ -11,6 +11,7 @@ import {
   Clock,
   FolderIcon,
   FileText,
+  BookOpen,
   Settings,
   Asterisk,
 } from "lucide-react"
@@ -67,6 +68,7 @@ type CollapsedState = {
   recent: boolean
   folders: boolean
   templates: boolean
+  quizzes: boolean
 }
 
 type SidebarProps = {
@@ -91,10 +93,15 @@ type SidebarProps = {
   deleteFolder?: (name: string) => void
   renameFolder?: (oldName: string, newName: string) => void
   renameConversation?: (id: string, newTitle: string) => void
+  deleteConversation?: (id: string) => void
   createNewChat: () => void
   templates?: TemplateItem[]
   setTemplates?: Dispatch<SetStateAction<TemplateItem[]>>
   onUseTemplate?: (template: TemplateItem) => void
+  quizzes?: any[]
+  onQuizSelect?: (quizId: string) => void
+  onQuizDelete?: (quizId: string) => void
+  onQuizRename?: (quizId: string, newTitle: string) => void
   sidebarCollapsed?: boolean
   setSidebarCollapsed?: Dispatch<SetStateAction<boolean>>
   user?: User | null
@@ -122,10 +129,15 @@ export default function Sidebar({
   deleteFolder,
   renameFolder,
   renameConversation,
+  deleteConversation,
   createNewChat,
   templates = [],
   setTemplates,
   onUseTemplate,
+  quizzes = [],
+  onQuizSelect,
+  onQuizDelete,
+  onQuizRename,
   sidebarCollapsed = false,
   setSidebarCollapsed,
   user = null,
@@ -472,6 +484,7 @@ export default function Sidebar({
                       onSelect={() => onSelect(conversation.id)}
                       onTogglePin={() => togglePin(conversation.id)}
                       onRename={(id, newTitle) => renameConversation?.(id, newTitle)}
+                      onDelete={(id) => deleteConversation?.(id)}
                     />
                   ))
                 )}
@@ -499,6 +512,7 @@ export default function Sidebar({
                       onSelect={() => onSelect(conversation.id)}
                       onTogglePin={() => togglePin(conversation.id)}
                       onRename={(id, newTitle) => renameConversation?.(id, newTitle)}
+                      onDelete={(id) => deleteConversation?.(id)}
                       showMeta
                     />
                   ))
@@ -531,8 +545,43 @@ export default function Sidebar({
                       togglePin={togglePin}
                       onDeleteFolder={handleDeleteFolder}
                       onRenameFolder={handleRenameFolder}
+                      onDeleteConversation={deleteConversation}
+                      onRenameConversation={renameConversation}
                     />
                   ))}
+                </div>
+              </SidebarSection>
+
+              <SidebarSection
+                icon={<BookOpen className="h-4 w-4" />}
+                title="QUIZZES"
+                collapsed={collapsed.quizzes}
+                onToggle={() => setCollapsed((prev) => ({ ...prev, quizzes: !prev.quizzes }))}
+              >
+                <div className="-mx-1">
+                  {Array.isArray(quizzes) && quizzes.length > 0 ? (
+                    quizzes.map((quiz) => (
+                      <div
+                        key={quiz.id}
+                        className="mb-1 flex items-center gap-2 rounded-lg px-2 py-2 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        onClick={() => onQuizSelect?.(quiz.id)}
+                      >
+                        <span className="text-sm">📚</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                            {quiz.title}
+                          </div>
+                          <div className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                            {quiz.questions?.length || 0} questions
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="px-2 py-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      No quizzes yet. Create one in chat.
+                    </p>
+                  )}
                 </div>
               </SidebarSection>
 

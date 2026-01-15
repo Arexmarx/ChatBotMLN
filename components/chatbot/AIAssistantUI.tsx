@@ -6,6 +6,7 @@ import { Calendar, LayoutGrid, MoreHorizontal } from "lucide-react"
 import Sidebar from "./Sidebar"
 import Header from "./Header"
 import ChatPane from "./ChatPane"
+import QuizView from "./QuizView"
 import GhostIconButton from "./GhostIconButton"
 import ThemeToggle from "./ThemeToggle"
 import { CHAT_THEMES, CHAT_THEME_STORAGE_KEY, isChatTheme, type ChatThemeKey } from "./themePresets"
@@ -23,6 +24,12 @@ import {
   updateMessage,
   getConversationWithMessages,
   updateConversation,
+  deleteConversation as deleteConversationDB,
+  saveQuizToLocalStorage,
+  getQuizzesFromLocalStorage,
+  renameQuizInLocalStorage,
+  deleteQuizFromLocalStorage,
+  type Quiz,
 } from "@/lib/chatbotService"
 
 type ConversationMessage = {
@@ -120,12 +127,12 @@ export default function AIAssistantUI() {
   }, [])
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState<{ pinned: boolean; recent: boolean; folders: boolean; templates: boolean }>(() => {
+  const [collapsed, setCollapsed] = useState<{ pinned: boolean; recent: boolean; folders: boolean; templates: boolean; quizzes: boolean }>(() => {
     try {
       const raw = localStorage.getItem("sidebar-collapsed")
-      return raw ? JSON.parse(raw) : { pinned: true, recent: false, folders: true, templates: true }
+      return raw ? JSON.parse(raw) : { pinned: true, recent: false, folders: true, templates: true, quizzes: true }
     } catch {
-      return { pinned: true, recent: false, folders: true, templates: true }
+      return { pinned: true, recent: false, folders: true, templates: true, quizzes: true }
     }
   })
   useEffect(() => {
@@ -153,8 +160,11 @@ export default function AIAssistantUI() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [templates, setTemplates] = useState<TemplateItem[]>([])
   const [folders, setFolders] = useState<FolderItem[]>([])
+  const [quizzes, setQuizzes] = useState<Quiz[]>([])
+  const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadedConversations, setLoadedConversations] = useState<Set<string>>(new Set())
 
   const [query, setQuery] = useState("")
   const searchRef = useRef<HTMLInputElement | null>(null)
@@ -227,6 +237,12 @@ export default function AIAssistantUI() {
         setFolders(formattedFolders)
         setTemplates(formattedTemplates)
 
+        // Load quizzes from localStorage
+        if (typeof window !== "undefined") {
+          const savedQuizzes = getQuizzesFromLocalStorage(currentUser.id)
+          setQuizzes(savedQuizzes)
+        }
+
         // Select first conversation or create new one
         if (formattedConversations.length > 0) {
           setSelectedId(formattedConversations[0].id)
@@ -277,11 +293,9 @@ export default function AIAssistantUI() {
   // Load messages when conversation is selected
   useEffect(() => {
     if (!selectedId) return
+    if (loadedConversations.has(selectedId)) return // Already loaded
 
     const loadMessages = async () => {
-      const conversation = conversations.find((c) => c.id === selectedId)
-      if (!conversation || conversation.messages.length > 0) return // Already loaded
-
       const conversationWithMessages = await getConversationWithMessages(selectedId)
       if (conversationWithMessages) {
         const formattedMessages: ConversationMessage[] = conversationWithMessages.messages.map((msg) => ({
@@ -297,11 +311,12 @@ export default function AIAssistantUI() {
             c.id === selectedId ? { ...c, messages: formattedMessages } : c
           )
         )
+        setLoadedConversations((prev) => new Set(prev).add(selectedId))
       }
     }
 
     loadMessages()
-  }, [selectedId, conversations])
+  }, [selectedId, loadedConversations])
 
   const filtered = useMemo<ConversationItem[]>(() => {
     if (!query.trim()) return conversations
@@ -433,9 +448,114 @@ export default function AIAssistantUI() {
     }
   }
 
-  async function sendMessage(convId: string, content: string) {
+  async function handleDeleteConversation(id: string) {
+    const success = await deleteConversationDB(id)
+    if (success) {
+      setConversations((prev) => prev.filter((c) => c.id !== id))
+      // If the deleted conversation was selected, clear selection
+      if (selectedId === id) {
+        setSelectedId(null)
+      }
+    } else {
+      alert("Failed to delete conversation")
+    }
+  }
+
+  async function createQuiz(prompt: string): Promise<Quiz | null> {
+    if (!currentUser || !prompt.trim()) return null
+
+    try {
+      const response = await fetch("/api/quiz", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: prompt,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to create quiz")
+      }
+
+      const data = await response.json()
+      const { quizzes } = data
+
+      // Generate quiz title from prompt (first 50 chars)
+      const quizTitle = prompt.slice(0, 50) + (prompt.length > 50 ? "..." : "")
+
+      // Save to localStorage
+      const newQuiz = saveQuizToLocalStorage(currentUser.id, quizTitle, quizzes)
+      
+      // Update local state
+      setQuizzes((prev) => [...prev, newQuiz])
+
+      return newQuiz
+    } catch (error) {
+      console.error("Error creating quiz:", error)
+      alert("Failed to create quiz")
+      return null
+    }
+  }
+
+  function renameQuiz(quizId: string, newTitle: string) {
+    if (renameQuizInLocalStorage(quizId, newTitle)) {
+      setQuizzes((prev) =>
+        prev.map((q) =>
+          q.id === quizId ? { ...q, title: newTitle, updatedAt: new Date().toISOString() } : q
+        )
+      )
+    }
+  }
+
+  function deleteQuiz(quizId: string) {
+    if (deleteQuizFromLocalStorage(quizId)) {
+      setQuizzes((prev) => prev.filter((q) => q.id !== quizId))
+    }
+  }
+
+  async function sendMessage(convId: string, content: string, mode?: "assistant" | "quiz") {
     if (!content.trim() || !currentUser) return
 
+    // Handle quiz mode
+    if (mode === "quiz") {
+      // Show thinking state
+      setIsThinking(true)
+      setThinkingConvId(convId)
+
+      const quiz = await createQuiz(content)
+      if (quiz) {
+        // Display quiz in chat but don't save to conversation
+        setConversations((prev) =>
+          prev.map((c) => {
+            if (c.id !== convId) return c
+            const userMsg: ConversationMessage = {
+              id: `user-${Date.now()}`,
+              role: "user",
+              content: content,
+              createdAt: new Date().toISOString(),
+            }
+            const quizMsg: ConversationMessage = {
+              id: `quiz-${quiz.id}`,
+              role: "assistant",
+              content: `__QUIZ__${JSON.stringify(quiz.questions)}`,
+              createdAt: new Date().toISOString(),
+            }
+            return {
+              ...c,
+              messages: [...(c.messages || []), userMsg, quizMsg],
+              updatedAt: new Date().toISOString(),
+            }
+          })
+        )
+      }
+      setIsThinking(false)
+      setThinkingConvId(null)
+      return
+    }
+
+    // Original assistant mode logic
     // Optimistically add user message to UI
     const tempUserMsg: ConversationMessage = {
       id: "temp-" + Date.now(),
@@ -644,7 +764,10 @@ export default function AIAssistantUI() {
           folders={folders}
           folderCounts={folderCounts}
           selectedId={selectedId}
-          onSelect={(id) => setSelectedId(id)}
+          onSelect={(id) => {
+            setSelectedId(id)
+            setSelectedQuiz(null) // Clear quiz when selecting conversation
+          }}
           togglePin={togglePin}
           query={query}
           setQuery={setQuery}
@@ -653,10 +776,21 @@ export default function AIAssistantUI() {
           deleteFolder={deleteFolder}
           renameFolder={renameFolder}
           renameConversation={renameConversation}
+          deleteConversation={handleDeleteConversation}
           createNewChat={createNewChat}
           templates={templates}
           setTemplates={setTemplates}
           onUseTemplate={handleUseTemplate}
+          quizzes={quizzes}
+          onQuizSelect={(quizId) => {
+            const quiz = quizzes.find((q) => q.id === quizId)
+            if (quiz) {
+              setSelectedQuiz(quiz)
+              setSelectedId(null) // Deselect conversation
+            }
+          }}
+          onQuizDelete={deleteQuiz}
+          onQuizRename={renameQuiz}
         />
 
         <main
@@ -670,44 +804,61 @@ export default function AIAssistantUI() {
             theme={theme}
             onThemeChange={setTheme}
           />
-          <ChatPane
-            ref={composerRef}
-            conversation={selected}
-            onSend={(content) => {
-              if (selected) {
-                sendMessage(selected.id, content)
+          {selectedQuiz ? (
+            <QuizView
+              quiz={selectedQuiz}
+              onRename={(quizId, newTitle) => {
+                renameQuiz(quizId, newTitle)
+                const updatedQuiz = quizzes.find(q => q.id === quizId)
+                if (updatedQuiz) {
+                  setSelectedQuiz(updatedQuiz)
+                }
+              }}
+              onDelete={(quizId) => {
+                deleteQuiz(quizId)
+                setSelectedQuiz(null)
+              }}
+            />
+          ) : (
+            <ChatPane
+              ref={composerRef}
+              conversation={selected}
+              onSend={(content, mode) => {
+                if (selected) {
+                  sendMessage(selected.id, content, mode)
+                }
+              }}
+              onEditMessage={(messageId, newContent) => {
+                if (selected) {
+                  editMessage(selected.id, messageId, newContent)
+                }
+              }}
+              onResendMessage={(messageId) => {
+                if (selected) {
+                  resendMessage(selected.id, messageId)
+                }
+              }}
+              isThinking={isThinking && thinkingConvId === selected?.id}
+              onPauseThinking={pauseThinking}
+              userAvatar={
+                typeof currentUser?.user_metadata?.avatar_url === "string"
+                  ? currentUser.user_metadata.avatar_url
+                  : typeof currentUser?.user_metadata?.picture === "string"
+                  ? currentUser.user_metadata.picture
+                  : null
               }
-            }}
-            onEditMessage={(messageId, newContent) => {
-              if (selected) {
-                editMessage(selected.id, messageId, newContent)
+              userInitials={
+                currentUser?.user_metadata?.full_name
+                  ?.split(" ")
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((part: string) => part.charAt(0).toUpperCase())
+                  .join("") ||
+                currentUser?.email?.charAt(0)?.toUpperCase() ||
+                "U"
               }
-            }}
-            onResendMessage={(messageId) => {
-              if (selected) {
-                resendMessage(selected.id, messageId)
-              }
-            }}
-            isThinking={isThinking && thinkingConvId === selected?.id}
-            onPauseThinking={pauseThinking}
-            userAvatar={
-              typeof currentUser?.user_metadata?.avatar_url === "string"
-                ? currentUser.user_metadata.avatar_url
-                : typeof currentUser?.user_metadata?.picture === "string"
-                ? currentUser.user_metadata.picture
-                : null
-            }
-            userInitials={
-              currentUser?.user_metadata?.full_name
-                ?.split(" ")
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((part: string) => part.charAt(0).toUpperCase())
-                .join("") ||
-              currentUser?.email?.charAt(0)?.toUpperCase() ||
-              "U"
-            }
-          />
+            />
+          )}
         </main>
       </div>
     </div>

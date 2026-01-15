@@ -33,6 +33,8 @@ type FolderRowProps = {
   togglePin: (id: string) => void
   onDeleteFolder?: (name: string) => void
   onRenameFolder?: (oldName: string, newName: string) => void
+  onDeleteConversation?: (id: string) => void
+  onRenameConversation?: (id: string, newTitle: string) => void
 }
 
 export default function FolderRow({
@@ -44,6 +46,8 @@ export default function FolderRow({
   togglePin,
   onDeleteFolder,
   onRenameFolder,
+  onDeleteConversation,
+  onRenameConversation,
 }: FolderRowProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -160,6 +164,8 @@ export default function FolderRow({
                   active={conversation.id === selectedId}
                   onSelect={() => onSelect(conversation.id)}
                   onTogglePin={() => togglePin(conversation.id)}
+                  onDelete={(id) => onDeleteConversation?.(id)}
+                  onRename={(id, newTitle) => onRenameConversation?.(id, newTitle)}
                   showMeta
                 />
               ))}

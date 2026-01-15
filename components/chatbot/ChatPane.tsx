@@ -7,6 +7,7 @@ import Composer, { type ComposerHandle } from "./Composer"
 import { cls, timeAgo } from "./utils"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import QuizDisplay from "./QuizDisplay"
 
 type ConversationMessage = {
   id: string
@@ -26,7 +27,7 @@ type ConversationItem = {
 
 type ChatPaneProps = {
   conversation: ConversationItem | null
-  onSend?: (content: string) => void | Promise<void>
+  onSend?: (content: string, mode?: "assistant" | "quiz") => void | Promise<void>
   onEditMessage?: (messageId: string, newContent: string) => void
   onResendMessage?: (messageId: string) => void
   isThinking: boolean
@@ -190,8 +191,14 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
                 ) : (
                   <Message role={m.role} userAvatar={m.role === "user" ? userAvatar : undefined} userInitials={userInitials}>
                     {m.role === "assistant" ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-pre:my-2 prose-ul:my-2 prose-ol:my-2" style={{ color: "var(--chat-assistant-text)", fontWeight: "500" }}>
-                        <ReactMarkdown
+                      m.content.startsWith("__QUIZ__") ? (
+                        <QuizDisplay
+                          questions={JSON.parse(m.content.replace("__QUIZ__", ""))}
+                          title="Quiz Created"
+                        />
+                      ) : (
+                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-pre:my-2 prose-ul:my-2 prose-ol:my-2" style={{ color: "var(--chat-assistant-text)", fontWeight: "500" }}>
+                          <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
                             // Customize styling for markdown elements
@@ -235,6 +242,7 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
                           {m.content}
                         </ReactMarkdown>
                       </div>
+                      )
                     ) : (
                       <div className="whitespace-pre-wrap">{m.content}</div>
                     )}
@@ -262,10 +270,10 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
 
       <Composer
         ref={composerRef}
-        onSend={async (text) => {
+        onSend={async (text, mode) => {
           if (!text.trim()) return
           setBusy(true)
-          await onSend?.(text)
+          await onSend?.(text, mode)
           setBusy(false)
         }}
         busy={busy}
