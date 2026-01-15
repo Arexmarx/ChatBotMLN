@@ -127,12 +127,12 @@ export default function AIAssistantUI() {
   }, [])
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState<{ pinned: boolean; recent: boolean; folders: boolean; templates: boolean; quizzes: boolean }>(() => {
+  const [collapsed, setCollapsed] = useState<{ pinned: boolean; recent: boolean; folders: boolean; quizzes: boolean }>(() => {
     try {
       const raw = localStorage.getItem("sidebar-collapsed")
-      return raw ? JSON.parse(raw) : { pinned: true, recent: false, folders: true, templates: true, quizzes: true }
+      return raw ? JSON.parse(raw) : { pinned: true, recent: false, folders: true, quizzes: true }
     } catch {
-      return { pinned: true, recent: false, folders: true, templates: true, quizzes: true }
+      return { pinned: true, recent: false, folders: true, quizzes: true }
     }
   })
   useEffect(() => {
@@ -276,16 +276,33 @@ export default function AIAssistantUI() {
 
     initialiseUser()
 
+    let authChangeTimeout: NodeJS.Timeout | null = null
     unsubscribe = subscribeToAuthChanges((_event, session) => {
       if (!mounted) return
-      setCurrentUser(session?.user ?? null)
-      if (!session?.user) {
-        router.replace("/")
+      
+      // Debounce auth changes to prevent rapid updates
+      if (authChangeTimeout) {
+        clearTimeout(authChangeTimeout)
       }
+      
+      authChangeTimeout = setTimeout(() => {
+        const newUser = session?.user ?? null
+        setCurrentUser(prev => {
+          // Only update if user actually changed
+          if (prev?.id === newUser?.id) return prev
+          return newUser
+        })
+        if (!session?.user) {
+          router.replace("/")
+        }
+      }, 100)
     })
 
     return () => {
       mounted = false
+      if (authChangeTimeout) {
+        clearTimeout(authChangeTimeout)
+      }
       unsubscribe?.()
     }
   }, [router])
@@ -316,7 +333,7 @@ export default function AIAssistantUI() {
     }
 
     loadMessages()
-  }, [selectedId, loadedConversations])
+  }, [selectedId])
 
   const filtered = useMemo<ConversationItem[]>(() => {
     if (!query.trim()) return conversations
@@ -451,11 +468,23 @@ export default function AIAssistantUI() {
   async function handleDeleteConversation(id: string) {
     const success = await deleteConversationDB(id)
     if (success) {
-      setConversations((prev) => prev.filter((c) => c.id !== id))
-      // If the deleted conversation was selected, clear selection
-      if (selectedId === id) {
-        setSelectedId(null)
-      }
+      setConversations((prev) => {
+        const filtered = prev.filter((c) => c.id !== id)
+        
+        // If the deleted conversation was selected, select another one
+        if (selectedId === id) {
+          if (filtered.length > 0) {
+            // Select the first available conversation
+            setSelectedId(filtered[0].id)
+          } else {
+            // No conversations left, create a new one
+            setSelectedId(null)
+            // Will trigger createNewChat via useEffect or user action
+          }
+        }
+        
+        return filtered
+      })
     } else {
       alert("Failed to delete conversation")
     }
@@ -603,9 +632,6 @@ export default function AIAssistantUI() {
       }
 
       const data = await response.json()
-      const endTime = typeof performance !== "undefined" ? performance.now() : Date.now()
-      const elapsedSeconds = Math.max(0, (endTime - startTime) / 1000)
-      const responseTimeLabel = `(response: ${elapsedSeconds.toFixed(1)}s)`
 
       // Update with real messages from server
       setConversations((prev) =>
@@ -625,7 +651,7 @@ export default function AIAssistantUI() {
           const assistantMsg: ConversationMessage = {
             id: data.assistantMessage.id,
             role: data.assistantMessage.role,
-            content: `${data.assistantMessage.content?.trim?.() ?? data.assistantMessage.content}\n\n${responseTimeLabel}`,
+            content: data.assistantMessage.content?.trim?.() ?? data.assistantMessage.content,
             createdAt: data.assistantMessage.createdAt,
           }
 
@@ -783,9 +809,6 @@ export default function AIAssistantUI() {
           renameConversation={renameConversation}
           deleteConversation={handleDeleteConversation}
           createNewChat={createNewChat}
-          templates={templates}
-          setTemplates={setTemplates}
-          onUseTemplate={handleUseTemplate}
           quizzes={quizzes}
           onQuizSelect={(quizId) => {
             const quiz = quizzes.find((q) => q.id === quizId)

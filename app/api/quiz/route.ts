@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     const n8nWebhookUrl =
-      "https://n8naiagent-bkanbfhxeghzcwfs.southeastasia-01.azurewebsites.net/webhook-test/7eec822e-4138-4ca9-b2a8-3795ff66508e"
+      "https://n8naiagent-bkanbfhxeghzcwfs.southeastasia-01.azurewebsites.net/webhook/7eec822e-4138-4ca9-b2a8-3795ff66508e"
 
     const response = await fetch(n8nWebhookUrl, {
       method: "POST",

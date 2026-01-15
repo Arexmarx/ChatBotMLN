@@ -28,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
  <html lang="en" suppressHydrationWarning>
-      <body className={geistSans.variable}> 
+      <body className={geistSans.variable} suppressHydrationWarning> 
           <ToastContainer />
           <AuthProvider>
             {/* Nội dung từng page */}

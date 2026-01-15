@@ -67,7 +67,6 @@ type CollapsedState = {
   pinned: boolean
   recent: boolean
   folders: boolean
-  templates: boolean
   quizzes: boolean
 }
 
@@ -95,9 +94,6 @@ type SidebarProps = {
   renameConversation?: (id: string, newTitle: string) => void
   deleteConversation?: (id: string) => void
   createNewChat: () => void
-  templates?: TemplateItem[]
-  setTemplates?: Dispatch<SetStateAction<TemplateItem[]>>
-  onUseTemplate?: (template: TemplateItem) => void
   quizzes?: any[]
   onQuizSelect?: (quizId: string) => void
   onQuizDelete?: (quizId: string) => void
@@ -131,9 +127,6 @@ export default function Sidebar({
   renameConversation,
   deleteConversation,
   createNewChat,
-  templates = [],
-  setTemplates,
-  onUseTemplate,
   quizzes = [],
   onQuizSelect,
   onQuizDelete,
@@ -143,16 +136,7 @@ export default function Sidebar({
   user = null,
 }: SidebarProps) {
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
-  const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false)
-  const [editingTemplate, setEditingTemplate] = useState<TemplateItem | null>(null)
   const [showSearchModal, setShowSearchModal] = useState(false)
-
-  const templateList = Array.isArray(templates) ? templates : []
-
-  const updateTemplates = (updater: SetStateAction<TemplateItem[]>) => {
-    if (!setTemplates) return
-    setTemplates(updater)
-  }
 
   const updateSidebarCollapsed = (next: boolean) => {
     if (!setSidebarCollapsed) return
@@ -191,57 +175,6 @@ export default function Sidebar({
     const trimmed = newName.trim()
     if (!trimmed || trimmed === oldName) return
     renameFolder?.(oldName, trimmed)
-  }
-
-  const handleCreateTemplate = (templateData: TemplateDraft) => {
-    const snippet =
-      templateData.snippet ??
-      (templateData.content.length > 100
-        ? `${templateData.content.slice(0, 100)}...`
-        : templateData.content)
-
-    const base: TemplateItem = {
-      id: templateData.id ?? `${Date.now()}`,
-      name: templateData.name,
-      content: templateData.content,
-      snippet,
-      createdAt: templateData.createdAt ?? new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-
-    if (templateData.id) {
-      updateTemplates((prev) => prev.map((item) => (item.id === templateData.id ? base : item)))
-    } else {
-      updateTemplates((prev) => [...prev, base])
-    }
-
-    setEditingTemplate(null)
-    setShowCreateTemplateModal(false)
-  }
-
-  const handleEditTemplate = (template: TemplateItem) => {
-    setEditingTemplate(template)
-    setShowCreateTemplateModal(true)
-  }
-
-  const handleRenameTemplate = (templateId: string, newName: string) => {
-    const trimmed = newName.trim()
-    if (!trimmed) return
-    updateTemplates((prev) =>
-      prev.map((item) =>
-        item.id === templateId
-          ? { ...item, name: trimmed, updatedAt: new Date().toISOString() }
-          : item,
-      ),
-    )
-  }
-
-  const handleDeleteTemplate = (templateId: string) => {
-    updateTemplates((prev) => prev.filter((item) => item.id !== templateId))
-  }
-
-  const handleUseTemplate = (template: TemplateItem) => {
-    onUseTemplate?.(template)
   }
 
   const { avatarUrl, initials, displayName, displaySubtitle } = useMemo(() => {
@@ -584,46 +517,6 @@ export default function Sidebar({
                   )}
                 </div>
               </SidebarSection>
-
-              <SidebarSection
-                icon={<FileText className="h-4 w-4" />}
-                title="TEMPLATES"
-                collapsed={collapsed.templates}
-                onToggle={() => setCollapsed((prev) => ({ ...prev, templates: !prev.templates }))}
-              >
-                <div className="-mx-1">
-                  <button
-                    onClick={() => {
-                      setEditingTemplate(null)
-                      setShowCreateTemplateModal(true)
-                    }}
-                    className="mb-2 inline-flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors"
-                    style={{ color: "var(--chat-sidebar-text, var(--chat-text))" }}
-                  >
-                    <Plus className="h-4 w-4" /> Create template
-                  </button>
-
-                  {templateList.map((template) => (
-                    <TemplateRow
-                      key={template.id}
-                      template={template}
-                      onUseTemplate={handleUseTemplate}
-                      onEditTemplate={handleEditTemplate}
-                      onRenameTemplate={handleRenameTemplate}
-                      onDeleteTemplate={handleDeleteTemplate}
-                    />
-                  ))}
-
-                  {templateList.length === 0 && (
-                    <div
-                      className="select-none rounded-lg border border-dashed px-3 py-3 text-center text-xs"
-                      style={{ borderColor: "var(--chat-border)", color: "var(--chat-muted)" }}
-                    >
-                      No templates yet. Create your first prompt template.
-                    </div>
-                  )}
-                </div>
-              </SidebarSection>
             </nav>
 
             <div className="mt-auto border-t px-3 py-3" style={{ borderColor: "var(--chat-border)" }}>
@@ -672,16 +565,6 @@ export default function Sidebar({
         isOpen={showCreateFolderModal}
         onClose={() => setShowCreateFolderModal(false)}
         onCreateFolder={handleCreateFolder}
-      />
-
-      <CreateTemplateModal
-        isOpen={showCreateTemplateModal}
-        onClose={() => {
-          setShowCreateTemplateModal(false)
-          setEditingTemplate(null)
-        }}
-        onCreateTemplate={handleCreateTemplate}
-        editingTemplate={editingTemplate}
       />
 
       <SearchModal

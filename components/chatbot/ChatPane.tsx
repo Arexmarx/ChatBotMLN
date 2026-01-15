@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, forwardRef, useImperativeHandle, useRef } from "react"
-import { Pencil, RefreshCw, Check, X, Square } from "lucide-react"
+import { useState, forwardRef, useImperativeHandle, useRef, useEffect } from "react"
+import { Pencil, RefreshCw, Check, X, Square, Copy } from "lucide-react"
 import Message from "./Message"
 import Composer, { type ComposerHandle } from "./Composer"
 import { cls, timeAgo } from "./utils"
@@ -105,6 +105,28 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
   const [busy, setBusy] = useState(false)
   const composerRef = useRef<ComposerHandle | null>(null)
   const [suggestedPrompts] = useState(() => shuffleArray(FAQ_QUESTIONS).slice(0, 3))
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+
+  // Calculate messages before any early return
+  const tags = ["Certified", "Personalized", "Experienced", "Helpful"]
+  const rawMessages: ConversationMessage[] = conversation && Array.isArray(conversation.messages) ? conversation.messages : []
+  
+  // Deduplicate messages by ID - keep first occurrence
+  const seenIds = new Set<string>()
+  const messages = rawMessages.filter((m) => {
+    if (seenIds.has(m.id)) return false
+    seenIds.add(m.id)
+    return true
+  })
+  
+  const count = messages.length || conversation?.messageCount || 0
+
+  // Auto-scroll to bottom when messages change or conversation changes
+  useEffect(() => {
+    if (messagesEndRef.current && conversation) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [conversation?.id, messages.length, isThinking])
 
   useImperativeHandle(
     ref,
@@ -117,19 +139,6 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
   )
 
   if (!conversation) return null
-
-  const tags = ["Certified", "Personalized", "Experienced", "Helpful"]
-  const rawMessages: ConversationMessage[] = Array.isArray(conversation.messages) ? conversation.messages : []
-  
-  // Deduplicate messages by ID - keep first occurrence
-  const seenIds = new Set<string>()
-  const messages = rawMessages.filter((m) => {
-    if (seenIds.has(m.id)) return false
-    seenIds.add(m.id)
-    return true
-  })
-  
-  const count = messages.length || conversation.messageCount || 0
 
   function startEdit(message: ConversationMessage) {
     setEditingId(message.id)
@@ -269,6 +278,23 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
                                   {children}
                                 </code>
                               ),
+                            pre: ({ children }: any) => (
+                              <div className="relative group my-2">
+                                <button
+                                  onClick={() => {
+                                    const codeElement = children?.props?.children
+                                    const text = String(codeElement).replace(/\n$/, '')
+                                    navigator.clipboard.writeText(text)
+                                  }}
+                                  className="absolute right-2 top-2 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                  style={{ backgroundColor: "var(--chat-surface)", border: "1px solid var(--chat-border)" }}
+                                  title="Copy code"
+                                >
+                                  <Copy className="h-3.5 w-3.5" style={{ color: "var(--chat-text)" }} />
+                                </button>
+                                <pre className="overflow-x-auto">{children}</pre>
+                              </div>
+                            ),
                             a: ({ children, href }) => (
                               <a
                                 href={href}
@@ -307,6 +333,8 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
               </div>
             ))}
             {isThinking && <ThinkingMessage onPause={onPauseThinking} />}
+            {/* Invisible element for auto-scroll */}
+            <div ref={messagesEndRef} />
           </>
         )}
       </div>
