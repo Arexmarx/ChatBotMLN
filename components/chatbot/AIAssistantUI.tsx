@@ -582,6 +582,8 @@ export default function AIAssistantUI() {
     setIsThinking(true)
     setThinkingConvId(convId)
 
+    const startTime = typeof performance !== "undefined" ? performance.now() : Date.now()
+
     try {
       // Call chat API
       const response = await fetch("/api/chat", {
@@ -601,6 +603,9 @@ export default function AIAssistantUI() {
       }
 
       const data = await response.json()
+      const endTime = typeof performance !== "undefined" ? performance.now() : Date.now()
+      const elapsedSeconds = Math.max(0, (endTime - startTime) / 1000)
+      const responseTimeLabel = `(response: ${elapsedSeconds.toFixed(1)}s)`
 
       // Update with real messages from server
       setConversations((prev) =>
@@ -620,7 +625,7 @@ export default function AIAssistantUI() {
           const assistantMsg: ConversationMessage = {
             id: data.assistantMessage.id,
             role: data.assistantMessage.role,
-            content: data.assistantMessage.content,
+            content: `${data.assistantMessage.content?.trim?.() ?? data.assistantMessage.content}\n\n${responseTimeLabel}`,
             createdAt: data.assistantMessage.createdAt,
           }
 

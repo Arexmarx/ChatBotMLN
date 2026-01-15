@@ -36,6 +36,34 @@ type ChatPaneProps = {
   userInitials?: string
 }
 
+const FAQ_QUESTIONS = [
+  "Nền dân chủ xã hội chủ nghĩa (DCXHCN) được hình thành dựa trên cơ sở thực tiễn nào trong lịch sử?",
+  "Theo chủ nghĩa Mác - Lênin, tại sao sự xuất hiện của nền DCXHCN là một tất yếu lịch sử?",
+  "Phân tích các mốc thời gian quan trọng: Đâu là giai đoạn phôi thai và đâu là mốc đánh dấu sự xác lập chính thức của nền DCXHCN?",
+  "Tại sao nói sự ra đời của nền DCXHCN đánh dấu một bước phát triển mới về 'chất' so với các nền dân chủ trước đó?",
+  "Mối quan hệ giữa cuộc đấu tranh cho dân chủ và cuộc cách mạng xã hội chủ nghĩa của giai cấp vô sản là gì?",
+  "Tại sao nền DCXHCN lại mang tính nhất nguyên về chính trị? Vai trò lãnh đạo của Đảng Cộng sản có ý nghĩa như thế nào đối với quyền lực của nhân dân?",
+  "Làm rõ khái niệm 'Dân chủ xã hội chủ nghĩa là chế độ dân chủ của đại đa số dân cư'. Đối tượng thụ hưởng và đối tượng bị loại bỏ quyền dân chủ ở đây là ai?",
+  "Phân tích quan điểm của Hồ Chí Minh: 'Bao nhiêu quyền lực đều là của dân, bao nhiêu sức mạnh đều ở nơi dân'. Điều này thể hiện bản chất gì của nhà nước?",
+  "Sự khác biệt về chất giữa bản chất chính trị của DCXHCN và dân chủ tư sản thể hiện qua những tiêu chí nào (về đảng phái, giai cấp, nhà nước)?",
+  "Nền DCXHCN dựa trên chế độ sở hữu nào về tư liệu sản xuất? Tại sao đây được coi là cơ sở để thực hiện quyền làm chủ của nhân dân?",
+  "Mối quan hệ giữa sự hoàn thiện của nền DCXHCN và sự 'tiêu vong' của nó được hiểu như thế nào về mặt chính trị?",
+  "Hệ tư tưởng nào giữ vai trò chủ đạo trong nền DCXHCN? Tính kế thừa các giá trị văn hóa nhân loại được thể hiện như thế nào?",
+  "Tại sao nói trong nền DCXHCN, lợi ích kinh tế của người lao động là động lực cơ bản nhất?",
+  "Tại sao hiện nay mức độ dân chủ ở một số nước xã hội chủ nghĩa còn có những hạn chế nhất định so với các nước tư bản phát triển?",
+  "Để quyền lực thực sự thuộc về nhân dân trong chế độ DCXHCN, cần phải đảm bảo những yếu tố khách quan và chủ quan nào (về dân trí, pháp luật, vật chất)?",
+  "Giải thích nhận định của V.I. Lênin: 'Chế độ dân chủ vô sản so với bất cứ chế độ dân chủ tư sản nào, cũng dân chủ hơn gấp triệu lần'.",
+]
+
+function shuffleArray<T>(items: T[]): T[] {
+  const array = [...items]
+  for (let i = array.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[array[i], array[j]] = [array[j], array[i]]
+  }
+  return array
+}
+
 export type ChatPaneHandle = {
   insertTemplate: (content: string) => void
 }
@@ -76,6 +104,7 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
   const [draft, setDraft] = useState<string>("")
   const [busy, setBusy] = useState(false)
   const composerRef = useRef<ComposerHandle | null>(null)
+  const [suggestedPrompts] = useState(() => shuffleArray(FAQ_QUESTIONS).slice(0, 3))
 
   useImperativeHandle(
     ref,
@@ -146,10 +175,24 @@ const ChatPane = forwardRef<ChatPaneHandle, ChatPaneProps>(function ChatPane(
 
         {messages.length === 0 ? (
           <div
-            className="rounded-xl border border-dashed p-6 text-sm"
+            className="rounded-xl border border-dashed p-6 text-sm space-y-3"
             style={{ borderColor: "var(--chat-border)", color: "var(--chat-muted)" }}
           >
-            No messages yet. Say hello to start.
+            <p className="font-medium" style={{ color: "var(--chat-text)" }}>
+              Chưa có tin nhắn nào. Hãy bắt đầu với một trong những câu hỏi gợi ý sau:
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {suggestedPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => composerRef.current?.insertTemplate(prompt)}
+                  className="rounded-xl border px-3 py-2 text-left text-xs transition-colors hover:bg-[var(--chat-surface)]"
+                  style={{ borderColor: "var(--chat-border)", color: "var(--chat-text)" }}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <>
