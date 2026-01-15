@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Calendar, LayoutGrid, MoreHorizontal } from "lucide-react"
+import { Calendar, LayoutGrid, MoreHorizontal, Home } from "lucide-react"
+import Link from "next/link"
 import Sidebar from "./Sidebar"
 import Header from "./Header"
 import ChatPane from "./ChatPane"
@@ -614,6 +615,15 @@ export default function AIAssistantUI() {
           <span className="inline-flex h-4 w-4 items-center justify-center">✱</span> AI Assistant
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {/* Nút quay về trang chủ trên mobile */}
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-white/10"
+            style={{ color: activeTheme.colors.text }}
+            title="Về trang chủ"
+          >
+            <Home className="h-4 w-4" />
+          </Link>
           <GhostIconButton label="Schedule">
             <Calendar className="h-4 w-4" />
           </GhostIconButton>

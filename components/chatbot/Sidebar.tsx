@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type Dispatch, type MutableRefObject, type SetStateAction, type CSSProperties } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import Link from "next/link"
 import {
   PanelLeftClose,
   PanelLeftOpen,
@@ -13,6 +14,7 @@ import {
   FileText,
   Settings,
   Asterisk,
+  Home,
 } from "lucide-react"
 import SidebarSection from "./SidebarSection"
 import ConversationRow from "./ConversationRow"
@@ -295,6 +297,16 @@ export default function Sidebar({
           </div>
 
           <div className="flex flex-1 flex-col items-center gap-2 pt-4">
+            {/* Home button - Quay về trang chủ */}
+            <Link
+              href="/"
+              className="group relative rounded-xl p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-indigo-500/10"
+              style={{ color: "var(--chat-text)" }}
+              title="Về trang chủ"
+            >
+              <Home className="h-5 w-5 transition-transform group-hover:scale-110" />
+            </Link>
+
             <button
               onClick={handleNewChatClick}
               className="rounded-xl p-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
@@ -389,6 +401,20 @@ export default function Sidebar({
                 </div>
               </div>
               <div className="ml-auto flex items-center gap-1">
+                {/* Nút quay về trang chủ */}
+                <Link
+                  href="/"
+                  className="group relative inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-indigo-500/10"
+                  style={{ 
+                    color: "var(--chat-sidebar-text, var(--chat-text))",
+                    border: "1px solid var(--chat-border)"
+                  }}
+                  title="Về trang chủ"
+                >
+                  <Home className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+                  <span className="hidden sm:inline">Trang chủ</span>
+                </Link>
+
                 <button
                   onClick={() => updateSidebarCollapsed(true)}
                   className="hidden md:block rounded-xl p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
