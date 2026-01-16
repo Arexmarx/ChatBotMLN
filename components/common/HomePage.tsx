@@ -136,10 +136,10 @@ export default function HomePage() {
                 <ArrowRight className="h-4 w-4" />
               </button>
               <Link
-                href="/kien-thuc"
+                href="/slides"
                 className="inline-flex items-center gap-2 rounded-full border border-red-200 px-6 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
               >
-                Xem kho tư liệu
+                Slides Canva
               </Link>
             </div>
             {warningMessage && (

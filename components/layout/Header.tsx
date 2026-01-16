@@ -19,9 +19,7 @@ interface HeaderProps {
 
 const NAV_LINKS = [
   { href: "/", label: "Trang chủ" },
-  { href: "/kien-thuc", label: "Kho tư liệu" },
-  { href: "/moc-lich-su", label: "Mốc lịch sử" },
-  { href: "/nhan-vat", label: "Nhân vật" },
+  { href: "/slides", label: "Slides Canva" }
 ];
 
 const Header: React.FC<HeaderProps> = ({ className = "" }) => {
@@ -94,10 +92,10 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
             </span>
             <div className="flex flex-col">
               <span className="text-base font-semibold text-gray-900">
-                Việt Sử Chatbot
+                MLN131 - Group 3 Chatbot
               </span>
               <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                Khám phá lịch sử Việt Nam
+                Scientific Socialism
               </span>
             </div>
           </Link>
