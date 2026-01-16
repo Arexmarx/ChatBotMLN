@@ -36,7 +36,7 @@ export const CHAT_THEMES: Record<ChatThemeKey, ChatThemeConfig> = {
       background: "#f8fafc",
       surface: "#ffffff",
       text: "#0f172a",
-      headerText: "#ffffff",
+      headerText: "#0f172a",
       sidebarText: "#0f172a",
       inputText: "#0f172a",
       muted: "#475569",
