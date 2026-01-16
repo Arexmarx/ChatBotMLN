@@ -23,6 +23,8 @@ type LeaderboardEntry = {
   total_questions: number;
   time_spent: number;
   completed_at: string | null;
+  email?: string | null;
+  full_name?: string | null;
 };
 
 export default function GameClient() {
@@ -255,6 +257,8 @@ export default function GameClient() {
             typeof record.total_questions === "number" &&
             typeof record.time_spent === "number"
           ) {
+            const email = typeof record.email === "string" ? (record.email as string) : null;
+            const fullName = typeof record.full_name === "string" ? (record.full_name as string) : null;
             acc.push({
               id: record.id,
               user_id: record.user_id,
@@ -262,6 +266,8 @@ export default function GameClient() {
               total_questions: record.total_questions,
               time_spent: record.time_spent,
               completed_at: typeof record.completed_at === "string" ? record.completed_at : null,
+              email,
+              full_name: fullName,
             });
           }
           return acc;
@@ -452,7 +458,13 @@ export default function GameClient() {
                     >
                       <td className="px-4 py-3 font-semibold text-gray-900">{index + 1}</td>
                       <td className="px-4 py-3 text-gray-700">
-                        {isCurrentUser ? "Bạn" : entry.user_id.slice(0, 8)}
+                        {isCurrentUser
+                          ? "Bạn"
+                          : ((entry as any).full_name && typeof (entry as any).full_name === "string"
+                              ? (entry as any).full_name
+                              : ((entry as any).email && typeof (entry as any).email === "string"
+                                  ? (entry as any).email
+                                  : entry.user_id.slice(0, 8)))}
                       </td>
                       <td className="px-4 py-3 font-semibold text-gray-900">{entry.score}</td>
                       <td className="px-4 py-3 text-gray-700">{entry.total_questions}</td>

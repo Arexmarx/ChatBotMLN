@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bot, Library, Network, GraduationCap, ArrowRight, X, Trophy } from "lucide-react";
 import { fetchSupabaseSession, subscribeToAuthChanges } from "@/app/api/authApi";
+import { getSupabaseClient } from "@/lib/supabaseClient";
 
 const pillars = [
   {
@@ -61,9 +62,19 @@ export default function HomePage() {
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [leaderboardEntries, setLeaderboardEntries] = useState<
-    { id: string; user_id: string; score: number; total_questions: number; time_spent: number; completed_at: string | null }[]
+    {
+      id: string;
+      user_id: string;
+      score: number;
+      total_questions: number;
+      time_spent: number;
+      completed_at: string | null;
+      email?: string | null;
+      full_name?: string | null;
+    }[]
   >([]);
   const [hasViewedLeaderboard, setHasViewedLeaderboard] = useState(false);
+  const [enrichingNames, setEnrichingNames] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -181,10 +192,21 @@ export default function HomePage() {
           const totalQuestions = typeof entry.total_questions === "number" ? entry.total_questions : null;
           const timeSpent = typeof entry.time_spent === "number" ? entry.time_spent : null;
           const completedAt = typeof entry.completed_at === "string" || entry.completed_at === null ? entry.completed_at : null;
+          const email = typeof entry.email === "string" ? entry.email : null;
+          const fullName = typeof entry.full_name === "string" ? entry.full_name : null;
           if (!id || !userId || score === null || totalQuestions === null || timeSpent === null) {
             return null;
           }
-          return { id, user_id: userId, score, total_questions: totalQuestions, time_spent: timeSpent, completed_at: completedAt };
+          return {
+            id,
+            user_id: userId,
+            score,
+            total_questions: totalQuestions,
+            time_spent: timeSpent,
+            completed_at: completedAt,
+            email,
+            full_name: fullName,
+          };
         })
         .filter(Boolean) as {
           id: string;
@@ -193,6 +215,8 @@ export default function HomePage() {
           total_questions: number;
           time_spent: number;
           completed_at: string | null;
+          email?: string | null;
+          full_name?: string | null;
         }[];
 
       setLeaderboardEntries(sanitized);
@@ -204,6 +228,45 @@ export default function HomePage() {
       setLoadingLeaderboard(false);
     }
   };
+
+  // Client-side fallback: enrich entries with full_name from profiles if missing
+  useEffect(() => {
+    const needsEnrichment = leaderboardEntries.some((e) => !e.full_name);
+    if (!hasViewedLeaderboard || !leaderboardEntries.length || !needsEnrichment || enrichingNames) {
+      return;
+    }
+    let active = true;
+    const enrich = async () => {
+      try {
+        setEnrichingNames(true);
+        const ids = Array.from(new Set(leaderboardEntries.map((e) => e.user_id)));
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", ids);
+        if (error || !Array.isArray(data)) {
+          return;
+        }
+        const nameMap = new Map<string, string | null>();
+        for (const p of data) {
+          const id = (p as any)?.user_id as string | undefined;
+          const fullName = (p as any)?.full_name as string | undefined;
+          if (id) nameMap.set(id, fullName ?? null);
+        }
+        if (!active) return;
+        setLeaderboardEntries((prev) => prev.map((e) => ({ ...e, full_name: e.full_name ?? nameMap.get(e.user_id) ?? null })));
+      } catch (e) {
+        // ignore
+      } finally {
+        if (active) setEnrichingNames(false);
+      }
+    };
+    void enrich();
+    return () => {
+      active = false;
+    };
+  }, [hasViewedLeaderboard, leaderboardEntries, enrichingNames]);
 
   const leaderboardHasData = useMemo(() => leaderboardEntries.length > 0, [leaderboardEntries]);
 
@@ -303,7 +366,13 @@ export default function HomePage() {
                             {leaderboardEntries.map((entry, index) => (
                               <tr key={entry.id}>
                                 <td className="px-3 py-2 font-semibold text-gray-700">{index + 1}</td>
-                                <td className="px-3 py-2 text-gray-600">{entry.user_id.slice(0, 8)}</td>
+                                <td className="px-3 py-2 text-gray-600">
+                                  {(entry as any).full_name && typeof (entry as any).full_name === "string"
+                                    ? (entry as any).full_name
+                                    : ((entry as any).email && typeof (entry as any).email === "string"
+                                        ? (entry as any).email
+                                        : entry.user_id.slice(0, 8))}
+                                </td>
                                 <td className="px-3 py-2 text-right font-semibold text-gray-800">{entry.score}</td>
                                 <td className="px-3 py-2 text-right text-gray-600">{entry.total_questions}</td>
                                 <td className="px-3 py-2 text-right text-gray-600">{formatLeaderboardTime(entry.time_spent)}</td>

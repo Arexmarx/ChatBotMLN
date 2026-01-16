@@ -44,7 +44,53 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Không thể tải bảng xếp hạng." }, { status: 500 });
     }
 
-    return NextResponse.json({ entries: data ?? [] });
+    // Attach `full_name` from profiles for better display; attach `email` when service role allows
+    let entries = data ?? [];
+    const hasServiceRole = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+    if (entries.length > 0) {
+      try {
+        const userIds = Array.from(new Set(entries.map((e) => e.user_id).filter((v): v is string => typeof v === "string")));
+        if (userIds.length > 0) {
+          // Profiles join (usually allowed via public RLS); best-effort
+          const { data: profiles, error: profilesError } = await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", userIds);
+
+          if (!profilesError && Array.isArray(profiles)) {
+            const nameMap = new Map<string, string | null>();
+            for (const p of profiles) {
+              const id = (p as any)?.user_id as string | undefined;
+              const fullName = (p as any)?.full_name as string | undefined;
+              if (id) nameMap.set(id, fullName ?? null);
+            }
+            entries = entries.map((e) => ({ ...e, full_name: nameMap.get(e.user_id) ?? null }));
+          }
+
+          // Emails from auth.users require service role
+          if (hasServiceRole) {
+            const { data: users, error: usersError } = await supabase
+              .schema("auth")
+              .from("users")
+              .select("id,email")
+              .in("id", userIds);
+            if (!usersError && Array.isArray(users)) {
+              const emailMap = new Map<string, string | null>();
+              for (const u of users) {
+                const id = (u as any)?.id as string | undefined;
+                const email = (u as any)?.email as string | undefined;
+                if (id) emailMap.set(id, email ?? null);
+              }
+              entries = entries.map((e) => ({ ...e, email: emailMap.get(e.user_id) ?? null }));
+            }
+          }
+        }
+      } catch (attachError) {
+        console.error("Leaderboard API: unable to attach profile names", attachError);
+      }
+    }
+
+    return NextResponse.json({ entries });
   } catch (error) {
     console.error("Leaderboard API: unexpected error", error);
     return NextResponse.json({ error: "Đã xảy ra lỗi khi tải bảng xếp hạng." }, { status: 500 });
