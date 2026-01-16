@@ -3,6 +3,7 @@ import { MoreHorizontal, Menu } from "lucide-react"
 import GhostIconButton from "./GhostIconButton"
 import ThemeToggle from "./ThemeToggle"
 import { CHAT_THEMES, type ChatThemeKey } from "./themePresets"
+import ViewerCountBadge from "./ViewerCountBadge"
 
 type HeaderProps = {
   createNewChat?: () => void
@@ -43,7 +44,8 @@ export default function Header({ createNewChat: _createNewChat, sidebarCollapsed
         <ThemeToggle theme={theme} onThemeChange={onThemeChange} />
       </div>
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-3">
+        <ViewerCountBadge />
         <GhostIconButton label="More">
           <MoreHorizontal className="h-4 w-4" />
         </GhostIconButton>
