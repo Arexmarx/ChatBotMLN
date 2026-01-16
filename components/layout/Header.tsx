@@ -8,7 +8,6 @@ import {
   subscribeToAuthChanges,
   signOutUser,
 } from "@/app/api/authApi";
-import type { User } from "@supabase/supabase-js";
 import EditProfileModal from "./EditProfileModal";
 import { useAuth } from "@/context/AuthContext";
 import AuthButton from "@/components/common/AuthButton";
@@ -19,7 +18,8 @@ interface HeaderProps {
 
 const NAV_LINKS = [
   { href: "/", label: "Trang chủ" },
-  { href: "/slides", label: "Slides Canva" }
+  { href: "/slides", label: "Slides" },
+  { href: "/docs", label: "Về sản phẩm" },
 ];
 
 const Header: React.FC<HeaderProps> = ({ className = "" }) => {
