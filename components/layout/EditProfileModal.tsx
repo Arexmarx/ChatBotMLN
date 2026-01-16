@@ -3,12 +3,13 @@ import React, { useState, useRef, useEffect } from "react";
 import { X, Camera, Loader2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
-import { upsertUserProfile } from "@/lib/profileService";
+import { upsertUserProfile, type UserProfile } from "@/lib/profileService";
 
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: User;
+  profile?: UserProfile | null;
   onProfileUpdate?: (data: { name: string; avatarUrl: string }) => void;
 }
 
@@ -16,6 +17,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   isOpen,
   onClose,
   user,
+  profile,
   onProfileUpdate,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -24,16 +26,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  // Get current user data
+  // Get current user data - prioritize profile from database over OAuth metadata
   const metadata = user.user_metadata ?? {};
   const currentAvatarUrl =
-    typeof metadata.avatar_url === "string"
+    profile?.avatar_url ||
+    (typeof metadata.avatar_url === "string"
       ? metadata.avatar_url
       : typeof metadata.picture === "string"
       ? metadata.picture
-      : null;
+      : null);
   const currentName =
-    typeof metadata.full_name === "string" ? metadata.full_name : "";
+    profile?.full_name || (typeof metadata.full_name === "string" ? metadata.full_name : "");
   const userInitial =
     currentName.charAt(0).toUpperCase() ||
     user.email?.charAt(0)?.toUpperCase() ||

@@ -225,6 +225,7 @@ const Header: React.FC<HeaderProps> = ({ className = "" }) => {
           isOpen={isEditProfileOpen}
           onClose={() => setIsEditProfileOpen(false)}
           user={currentUser}
+          profile={profile}
           onProfileUpdate={handleProfileUpdate}
         />
       )}
